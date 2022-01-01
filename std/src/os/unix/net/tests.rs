@@ -1,25 +1,11 @@
 use super::*;
 use crate::io::prelude::*;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
-use crate::iter::FromIterator;
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
+#[cfg(target_os = "android")]
+use crate::os::android::net::{SocketAddrExt, UnixSocketExt};
+#[cfg(target_os = "linux")]
+use crate::os::linux::net::{SocketAddrExt, UnixSocketExt};
+#[cfg(any(target_os = "android", target_os = "linux"))]
 use crate::os::unix::io::AsRawFd;
 use crate::sys_common::io::test::tmpdir;
 use crate::thread;
@@ -29,12 +15,13 @@ macro_rules! or_panic {
     ($e:expr) => {
         match $e {
             Ok(e) => e,
-            Err(e) => panic!("{}", e),
+            Err(e) => panic!("{e}"),
         }
     };
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn basic() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -105,6 +92,7 @@ fn pair() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn try_clone() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -131,6 +119,7 @@ fn try_clone() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn iter() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -161,24 +150,26 @@ fn long_path() {
     );
     match UnixStream::connect(&socket_path) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
-        Err(e) => panic!("unexpected error {}", e),
+        Err(e) => panic!("unexpected error {e}"),
         Ok(_) => panic!("unexpected success"),
     }
 
     match UnixListener::bind(&socket_path) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
-        Err(e) => panic!("unexpected error {}", e),
+        Err(e) => panic!("unexpected error {e}"),
         Ok(_) => panic!("unexpected success"),
     }
 
     match UnixDatagram::bind(&socket_path) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
-        Err(e) => panic!("unexpected error {}", e),
+        Err(e) => panic!("unexpected error {e}"),
         Ok(_) => panic!("unexpected success"),
     }
 }
 
 #[test]
+#[cfg(not(target_os = "nto"))]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn timeouts() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -206,6 +197,7 @@ fn timeouts() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_read_timeout() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -225,6 +217,7 @@ fn test_read_timeout() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_read_with_timeout() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -252,6 +245,7 @@ fn test_read_with_timeout() {
 // Ensure the `set_read_timeout` and `set_write_timeout` calls return errors
 // when passed zero Durations
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_unix_stream_timeout_zero_duration() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -271,6 +265,7 @@ fn test_unix_stream_timeout_zero_duration() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_unix_datagram() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");
@@ -287,6 +282,7 @@ fn test_unix_datagram() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_unnamed_unix_datagram() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");
@@ -304,6 +300,32 @@ fn test_unnamed_unix_datagram() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+fn test_unix_datagram_connect_to_recv_addr() {
+    let dir = tmpdir();
+    let path1 = dir.path().join("sock1");
+    let path2 = dir.path().join("sock2");
+
+    let sock1 = or_panic!(UnixDatagram::bind(&path1));
+    let sock2 = or_panic!(UnixDatagram::bind(&path2));
+
+    let msg = b"hello world";
+    let sock1_addr = or_panic!(sock1.local_addr());
+    or_panic!(sock2.send_to_addr(msg, &sock1_addr));
+    let mut buf = [0; 11];
+    let (_, addr) = or_panic!(sock1.recv_from(&mut buf));
+
+    let new_msg = b"hello back";
+    let mut new_buf = [0; 10];
+    or_panic!(sock2.connect_addr(&addr));
+    or_panic!(sock2.send(new_msg)); // set by connect_addr
+    let usize = or_panic!(sock2.recv(&mut new_buf));
+    assert_eq!(usize, 10);
+    assert_eq!(new_msg, &new_buf[..]);
+}
+
+#[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_connect_unix_datagram() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");
@@ -330,6 +352,7 @@ fn test_connect_unix_datagram() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_unix_datagram_recv() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");
@@ -372,6 +395,7 @@ fn datagram_pair() {
 // Ensure the `set_read_timeout` and `set_write_timeout` calls return errors
 // when passed zero Durations
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_unix_datagram_timeout_zero_duration() {
     let dir = tmpdir();
     let path = dir.path().join("sock");
@@ -388,11 +412,135 @@ fn test_unix_datagram_timeout_zero_duration() {
 }
 
 #[test]
-fn abstract_namespace_not_allowed() {
+fn abstract_namespace_not_allowed_connect() {
     assert!(UnixStream::connect("\0asdf").is_err());
 }
 
+#[cfg(any(target_os = "android", target_os = "linux"))]
 #[test]
+fn test_abstract_stream_connect() {
+    let msg1 = b"hello";
+    let msg2 = b"world";
+
+    let socket_addr = or_panic!(SocketAddr::from_abstract_name(b"name"));
+    let listener = or_panic!(UnixListener::bind_addr(&socket_addr));
+
+    let thread = thread::spawn(move || {
+        let mut stream = or_panic!(listener.accept()).0;
+        let mut buf = [0; 5];
+        or_panic!(stream.read(&mut buf));
+        assert_eq!(&msg1[..], &buf[..]);
+        or_panic!(stream.write_all(msg2));
+    });
+
+    let mut stream = or_panic!(UnixStream::connect_addr(&socket_addr));
+
+    let peer = or_panic!(stream.peer_addr());
+    assert_eq!(peer.as_abstract_name().unwrap(), b"name");
+
+    or_panic!(stream.write_all(msg1));
+    let mut buf = vec![];
+    or_panic!(stream.read_to_end(&mut buf));
+    assert_eq!(&msg2[..], &buf[..]);
+    drop(stream);
+
+    thread.join().unwrap();
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+#[test]
+fn test_abstract_stream_iter() {
+    let addr = or_panic!(SocketAddr::from_abstract_name(b"hidden"));
+    let listener = or_panic!(UnixListener::bind_addr(&addr));
+
+    let thread = thread::spawn(move || {
+        for stream in listener.incoming().take(2) {
+            let mut stream = or_panic!(stream);
+            let mut buf = [0];
+            or_panic!(stream.read(&mut buf));
+        }
+    });
+
+    for _ in 0..2 {
+        let mut stream = or_panic!(UnixStream::connect_addr(&addr));
+        or_panic!(stream.write_all(&[0]));
+    }
+
+    thread.join().unwrap();
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+#[test]
+fn test_abstract_datagram_bind_send_to_addr() {
+    let addr1 = or_panic!(SocketAddr::from_abstract_name(b"ns1"));
+    let sock1 = or_panic!(UnixDatagram::bind_addr(&addr1));
+
+    let local = or_panic!(sock1.local_addr());
+    assert_eq!(local.as_abstract_name().unwrap(), b"ns1");
+
+    let addr2 = or_panic!(SocketAddr::from_abstract_name(b"ns2"));
+    let sock2 = or_panic!(UnixDatagram::bind_addr(&addr2));
+
+    let msg = b"hello world";
+    or_panic!(sock1.send_to_addr(msg, &addr2));
+    let mut buf = [0; 11];
+    let (len, addr) = or_panic!(sock2.recv_from(&mut buf));
+    assert_eq!(msg, &buf[..]);
+    assert_eq!(len, 11);
+    assert_eq!(addr.as_abstract_name().unwrap(), b"ns1");
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+#[test]
+fn test_abstract_datagram_connect_addr() {
+    let addr1 = or_panic!(SocketAddr::from_abstract_name(b"ns3"));
+    let bsock1 = or_panic!(UnixDatagram::bind_addr(&addr1));
+
+    let sock = or_panic!(UnixDatagram::unbound());
+    or_panic!(sock.connect_addr(&addr1));
+
+    let msg = b"hello world";
+    or_panic!(sock.send(msg));
+    let mut buf = [0; 11];
+    let (len, addr) = or_panic!(bsock1.recv_from(&mut buf));
+    assert_eq!(len, 11);
+    assert_eq!(addr.is_unnamed(), true);
+    assert_eq!(msg, &buf[..]);
+
+    let addr2 = or_panic!(SocketAddr::from_abstract_name(b"ns4"));
+    let bsock2 = or_panic!(UnixDatagram::bind_addr(&addr2));
+
+    or_panic!(sock.connect_addr(&addr2));
+    or_panic!(sock.send(msg));
+    or_panic!(bsock2.recv_from(&mut buf));
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+#[test]
+fn test_abstract_name_too_long() {
+    match SocketAddr::from_abstract_name(
+        b"abcdefghijklmnopqrstuvwxyzabcdefghijklmn\
+        opqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi\
+        jklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
+    ) {
+        Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
+        Err(e) => panic!("unexpected error {e}"),
+        Ok(_) => panic!("unexpected success"),
+    }
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+#[test]
+fn test_abstract_no_pathname_and_not_unnamed() {
+    let name = b"local";
+    let addr = or_panic!(SocketAddr::from_abstract_name(name));
+    assert_eq!(addr.as_pathname(), None);
+    assert_eq!(addr.as_abstract_name(), Some(&name[..]));
+    assert_eq!(addr.is_unnamed(), false);
+}
+
+#[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_unix_stream_peek() {
     let (txdone, rxdone) = crate::sync::mpsc::channel();
 
@@ -417,7 +565,7 @@ fn test_unix_stream_peek() {
     match stream.peek(&mut buf) {
         Ok(_) => panic!("expected error"),
         Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
-        Err(e) => panic!("unexpected error: {}", e),
+        Err(e) => panic!("unexpected error: {e}"),
     }
 
     or_panic!(txdone.send(()));
@@ -425,6 +573,7 @@ fn test_unix_stream_peek() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_unix_datagram_peek() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock");
@@ -449,6 +598,7 @@ fn test_unix_datagram_peek() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_unix_datagram_peek_from() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock");
@@ -472,15 +622,7 @@ fn test_unix_datagram_peek_from() {
     assert_eq!(msg, &buf[..]);
 }
 
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
+#[cfg(any(target_os = "android", target_os = "linux"))]
 #[test]
 fn test_send_vectored_fds_unix_stream() {
     let (s1, s2) = or_panic!(UnixStream::pair());
@@ -518,8 +660,9 @@ fn test_send_vectored_fds_unix_stream() {
     }
 }
 
-#[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux",))]
+#[cfg(any(target_os = "android", target_os = "linux"))]
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_send_vectored_with_ancillary_to_unix_datagram() {
     fn getpid() -> libc::pid_t {
         unsafe { libc::getpid() }
@@ -585,16 +728,9 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
     }
 }
 
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
+#[cfg(any(target_os = "android", target_os = "linux"))]
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_send_vectored_with_ancillary_unix_datagram() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");

@@ -1,11 +1,17 @@
-use core::array;
-use core::convert::TryFrom;
+use core::num::NonZero;
+use core::sync::atomic::{AtomicUsize, Ordering};
+use core::{array, assert_eq};
 
 #[test]
 fn array_from_ref() {
     let value: String = "Hello World!".into();
     let arr: &[String; 1] = array::from_ref(&value);
     assert_eq!(&[value.clone()], arr);
+
+    const VALUE: &&str = &"Hello World!";
+    const ARR: &[&str; 1] = array::from_ref(VALUE);
+    assert_eq!(&[*VALUE], ARR);
+    assert!(core::ptr::eq(VALUE, &ARR[0]));
 }
 
 #[test]
@@ -22,11 +28,22 @@ fn array_try_from() {
         ($($N:expr)+) => {
             $({
                 type Array = [u8; $N];
-                let array: Array = [0; $N];
+                let mut array: Array = [0; $N];
                 let slice: &[u8] = &array[..];
 
                 let result = <&Array>::try_from(slice);
                 assert_eq!(&array, result.unwrap());
+
+                let result = <Array>::try_from(slice);
+                assert_eq!(&array, &result.unwrap());
+
+                let mut_slice: &mut [u8] = &mut array[..];
+                let result = <&mut Array>::try_from(mut_slice);
+                assert_eq!(&[0; $N], result.unwrap());
+
+                let mut_slice: &mut [u8] = &mut array[..];
+                let result = <Array>::try_from(mut_slice);
+                assert_eq!(&array, &result.unwrap());
             })+
         }
     }
@@ -239,19 +256,14 @@ fn iterator_drops() {
     assert_eq!(i.get(), 5);
 }
 
-// This test does not work on targets without panic=unwind support.
-// To work around this problem, test is marked is should_panic, so it will
-// be automagically skipped on unsuitable targets, such as
-// wasm32-unknown-unkown.
-//
-// It means that we use panic for indicating success.
 #[test]
-#[should_panic(expected = "test succeeded")]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn array_default_impl_avoids_leaks_on_panic() {
-    use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+    use core::sync::atomic::AtomicUsize;
+    use core::sync::atomic::Ordering::Relaxed;
     static COUNTER: AtomicUsize = AtomicUsize::new(0);
     #[derive(Debug)]
-    struct Bomb(usize);
+    struct Bomb(#[allow(dead_code)] usize);
 
     impl Default for Bomb {
         fn default() -> Bomb {
@@ -278,7 +290,6 @@ fn array_default_impl_avoids_leaks_on_panic() {
     assert_eq!(*panic_msg, "bomb limit exceeded");
     // check that all bombs are successfully dropped
     assert_eq!(COUNTER.load(Relaxed), 0);
-    panic!("test succeeded")
 }
 
 #[test]
@@ -299,12 +310,9 @@ fn array_map() {
     assert_eq!(b, [1, 2, 3]);
 }
 
-// See note on above test for why `should_panic` is used.
 #[test]
-#[should_panic(expected = "test succeeded")]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn array_map_drop_safety() {
-    use core::sync::atomic::AtomicUsize;
-    use core::sync::atomic::Ordering;
     static DROPPED: AtomicUsize = AtomicUsize::new(0);
     struct DropCounter;
     impl Drop for DropCounter {
@@ -325,7 +333,6 @@ fn array_map_drop_safety() {
     });
     assert!(success.is_err());
     assert_eq!(DROPPED.load(Ordering::SeqCst), num_to_create);
-    panic!("test succeeded")
 }
 
 #[test]
@@ -355,4 +362,358 @@ fn cell_allows_array_cycle() {
 
     b3.a[0].set(Some(&b1));
     b3.a[1].set(Some(&b2));
+}
+
+#[test]
+fn array_from_fn() {
+    let array = core::array::from_fn(|idx| idx);
+    assert_eq!(array, [0, 1, 2, 3, 4]);
+}
+
+#[test]
+fn array_try_from_fn() {
+    #[derive(Debug, PartialEq)]
+    enum SomeError {
+        Foo,
+    }
+
+    let array = core::array::try_from_fn(|i| Ok::<_, SomeError>(i));
+    assert_eq!(array, Ok([0, 1, 2, 3, 4]));
+
+    let another_array = core::array::try_from_fn::<Result<(), _>, 2, _>(|_| Err(SomeError::Foo));
+    assert_eq!(another_array, Err(SomeError::Foo));
+}
+
+#[cfg(not(panic = "abort"))]
+#[test]
+fn array_try_from_fn_drops_inserted_elements_on_err() {
+    static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    struct CountDrop;
+    impl Drop for CountDrop {
+        fn drop(&mut self) {
+            DROP_COUNTER.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    let _ = catch_unwind_silent(move || {
+        let _: Result<[CountDrop; 4], ()> = core::array::try_from_fn(|idx| {
+            if idx == 2 {
+                return Err(());
+            }
+            Ok(CountDrop)
+        });
+    });
+
+    assert_eq!(DROP_COUNTER.load(Ordering::SeqCst), 2);
+}
+
+#[cfg(not(panic = "abort"))]
+#[test]
+fn array_try_from_fn_drops_inserted_elements_on_panic() {
+    static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    struct CountDrop;
+    impl Drop for CountDrop {
+        fn drop(&mut self) {
+            DROP_COUNTER.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    let _ = catch_unwind_silent(move || {
+        let _: Result<[CountDrop; 4], ()> = core::array::try_from_fn(|idx| {
+            if idx == 2 {
+                panic!("peek a boo");
+            }
+            Ok(CountDrop)
+        });
+    });
+
+    assert_eq!(DROP_COUNTER.load(Ordering::SeqCst), 2);
+}
+
+#[cfg(not(panic = "abort"))]
+// https://stackoverflow.com/a/59211505
+fn catch_unwind_silent<F, R>(f: F) -> std::thread::Result<R>
+where
+    F: FnOnce() -> R + core::panic::UnwindSafe,
+{
+    let prev_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let result = std::panic::catch_unwind(f);
+    std::panic::set_hook(prev_hook);
+    result
+}
+
+#[test]
+fn array_split_array_mut() {
+    let mut v = [1, 2, 3, 4, 5, 6];
+
+    {
+        let (left, right) = v.split_array_mut::<0>();
+        assert_eq!(left, &mut []);
+        assert_eq!(right, &mut [1, 2, 3, 4, 5, 6]);
+    }
+
+    {
+        let (left, right) = v.split_array_mut::<6>();
+        assert_eq!(left, &mut [1, 2, 3, 4, 5, 6]);
+        assert_eq!(right, &mut []);
+    }
+}
+
+#[test]
+fn array_rsplit_array_mut() {
+    let mut v = [1, 2, 3, 4, 5, 6];
+
+    {
+        let (left, right) = v.rsplit_array_mut::<0>();
+        assert_eq!(left, &mut [1, 2, 3, 4, 5, 6]);
+        assert_eq!(right, &mut []);
+    }
+
+    {
+        let (left, right) = v.rsplit_array_mut::<6>();
+        assert_eq!(left, &mut []);
+        assert_eq!(right, &mut [1, 2, 3, 4, 5, 6]);
+    }
+}
+
+#[should_panic]
+#[test]
+fn array_split_array_ref_out_of_bounds() {
+    let v = [1, 2, 3, 4, 5, 6];
+
+    v.split_array_ref::<7>();
+}
+
+#[should_panic]
+#[test]
+fn array_split_array_mut_out_of_bounds() {
+    let mut v = [1, 2, 3, 4, 5, 6];
+
+    v.split_array_mut::<7>();
+}
+
+#[should_panic]
+#[test]
+fn array_rsplit_array_ref_out_of_bounds() {
+    let v = [1, 2, 3, 4, 5, 6];
+
+    v.rsplit_array_ref::<7>();
+}
+
+#[should_panic]
+#[test]
+fn array_rsplit_array_mut_out_of_bounds() {
+    let mut v = [1, 2, 3, 4, 5, 6];
+
+    v.rsplit_array_mut::<7>();
+}
+
+#[test]
+fn array_intoiter_advance_by() {
+    use std::cell::Cell;
+    struct DropCounter<'a>(usize, &'a Cell<usize>);
+    impl Drop for DropCounter<'_> {
+        fn drop(&mut self) {
+            let x = self.1.get();
+            self.1.set(x + 1);
+        }
+    }
+
+    let counter = Cell::new(0);
+    let a: [_; 100] = std::array::from_fn(|i| DropCounter(i, &counter));
+    let mut it = IntoIterator::into_iter(a);
+
+    let r = it.advance_by(1);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 99);
+    assert_eq!(counter.get(), 1);
+
+    let r = it.advance_by(0);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 99);
+    assert_eq!(counter.get(), 1);
+
+    let r = it.advance_by(11);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 88);
+    assert_eq!(counter.get(), 12);
+
+    let x = it.next();
+    assert_eq!(x.as_ref().map(|x| x.0), Some(12));
+    assert_eq!(it.len(), 87);
+    assert_eq!(counter.get(), 12);
+    drop(x);
+    assert_eq!(counter.get(), 13);
+
+    let r = it.advance_by(123456);
+    assert_eq!(r, Err(NonZero::new(123456 - 87).unwrap()));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+
+    let r = it.advance_by(0);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+
+    let r = it.advance_by(10);
+    assert_eq!(r, Err(NonZero::new(10).unwrap()));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+}
+
+#[test]
+fn array_intoiter_advance_back_by() {
+    use std::cell::Cell;
+    struct DropCounter<'a>(usize, &'a Cell<usize>);
+    impl Drop for DropCounter<'_> {
+        fn drop(&mut self) {
+            let x = self.1.get();
+            self.1.set(x + 1);
+        }
+    }
+
+    let counter = Cell::new(0);
+    let a: [_; 100] = std::array::from_fn(|i| DropCounter(i, &counter));
+    let mut it = IntoIterator::into_iter(a);
+
+    let r = it.advance_back_by(1);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 99);
+    assert_eq!(counter.get(), 1);
+
+    let r = it.advance_back_by(0);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 99);
+    assert_eq!(counter.get(), 1);
+
+    let r = it.advance_back_by(11);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 88);
+    assert_eq!(counter.get(), 12);
+
+    let x = it.next_back();
+    assert_eq!(x.as_ref().map(|x| x.0), Some(87));
+    assert_eq!(it.len(), 87);
+    assert_eq!(counter.get(), 12);
+    drop(x);
+    assert_eq!(counter.get(), 13);
+
+    let r = it.advance_back_by(123456);
+    assert_eq!(r, Err(NonZero::new(123456 - 87).unwrap()));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+
+    let r = it.advance_back_by(0);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+
+    let r = it.advance_back_by(10);
+    assert_eq!(r, Err(NonZero::new(10).unwrap()));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+}
+
+#[test]
+fn array_mixed_equality_integers() {
+    let array3: [i32; 3] = [1, 2, 3];
+    let array3b: [i32; 3] = [3, 2, 1];
+    let array4: [i32; 4] = [1, 2, 3, 4];
+
+    let slice3: &[i32] = &{ array3 };
+    let slice3b: &[i32] = &{ array3b };
+    let slice4: &[i32] = &{ array4 };
+    assert!(array3 == slice3);
+    assert!(array3 != slice3b);
+    assert!(array3 != slice4);
+    assert!(slice3 == array3);
+    assert!(slice3b != array3);
+    assert!(slice4 != array3);
+
+    let mut3: &mut [i32] = &mut { array3 };
+    let mut3b: &mut [i32] = &mut { array3b };
+    let mut4: &mut [i32] = &mut { array4 };
+    assert!(array3 == mut3);
+    assert!(array3 != mut3b);
+    assert!(array3 != mut4);
+    assert!(mut3 == array3);
+    assert!(mut3b != array3);
+    assert!(mut4 != array3);
+}
+
+#[test]
+fn array_mixed_equality_nans() {
+    let array3: [f32; 3] = [1.0, std::f32::NAN, 3.0];
+
+    let slice3: &[f32] = &{ array3 };
+    assert!(!(array3 == slice3));
+    assert!(array3 != slice3);
+    assert!(!(slice3 == array3));
+    assert!(slice3 != array3);
+
+    let mut3: &mut [f32] = &mut { array3 };
+    assert!(!(array3 == mut3));
+    assert!(array3 != mut3);
+    assert!(!(mut3 == array3));
+    assert!(mut3 != array3);
+}
+
+#[test]
+fn array_into_iter_fold() {
+    // Strings to help Miri catch if we double-free or something
+    let a = ["Aa".to_string(), "Bb".to_string(), "Cc".to_string()];
+    let mut s = "s".to_string();
+    a.into_iter().for_each(|b| s += &b);
+    assert_eq!(s, "sAaBbCc");
+
+    let a = [1, 2, 3, 4, 5, 6];
+    let mut it = a.into_iter();
+    assert_eq!(it.advance_by(1), Ok(()));
+    assert_eq!(it.advance_back_by(2), Ok(()));
+    let s = it.fold(10, |a, b| 10 * a + b);
+    assert_eq!(s, 10234);
+}
+
+#[test]
+fn array_into_iter_rfold() {
+    // Strings to help Miri catch if we double-free or something
+    let a = ["Aa".to_string(), "Bb".to_string(), "Cc".to_string()];
+    let mut s = "s".to_string();
+    a.into_iter().rev().for_each(|b| s += &b);
+    assert_eq!(s, "sCcBbAa");
+
+    let a = [1, 2, 3, 4, 5, 6];
+    let mut it = a.into_iter();
+    assert_eq!(it.advance_by(1), Ok(()));
+    assert_eq!(it.advance_back_by(2), Ok(()));
+    let s = it.rfold(10, |a, b| 10 * a + b);
+    assert_eq!(s, 10432);
+}
+
+#[cfg(not(panic = "abort"))]
+#[test]
+fn array_map_drops_unmapped_elements_on_panic() {
+    struct DropCounter<'a>(usize, &'a AtomicUsize);
+    impl Drop for DropCounter<'_> {
+        fn drop(&mut self) {
+            self.1.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    const MAX: usize = 11;
+    for panic_after in 0..MAX {
+        let counter = AtomicUsize::new(0);
+        let a = array::from_fn::<_, 11, _>(|i| DropCounter(i, &counter));
+        let success = std::panic::catch_unwind(|| {
+            let _ = a.map(|x| {
+                assert!(x.0 < panic_after);
+                assert_eq!(counter.load(Ordering::SeqCst), x.0);
+            });
+        });
+        assert!(success.is_err());
+        assert_eq!(counter.load(Ordering::SeqCst), MAX);
+    }
 }

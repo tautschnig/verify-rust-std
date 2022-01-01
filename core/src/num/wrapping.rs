@@ -1,10 +1,10 @@
 //! Definitions of `Wrapping<T>`.
 
 use crate::fmt;
-use crate::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign};
-use crate::ops::{BitXor, BitXorAssign, Div, DivAssign};
-use crate::ops::{Mul, MulAssign, Neg, Not, Rem, RemAssign};
-use crate::ops::{Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign};
+use crate::ops::{
+    Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, DivAssign,
+    Mul, MulAssign, Neg, Not, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
+};
 
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///
@@ -32,9 +32,14 @@ use crate::ops::{Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign};
 ///
 /// assert_eq!(u32::MAX, (zero - one).0);
 /// ```
+///
+/// # Layout
+///
+/// `Wrapping<T>` is guaranteed to have the same layout and ABI as `T`.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
 #[repr(transparent)]
+#[rustc_diagnostic_item = "Wrapping"]
 pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -225,6 +230,15 @@ macro_rules! wrapping_impl {
         }
         forward_ref_op_assign! { impl AddAssign, add_assign for Wrapping<$t>, Wrapping<$t> }
 
+        #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
+        impl AddAssign<$t> for Wrapping<$t> {
+            #[inline]
+            fn add_assign(&mut self, other: $t) {
+                *self = *self + Wrapping(other);
+            }
+        }
+        forward_ref_op_assign! { impl AddAssign, add_assign for Wrapping<$t>, $t }
+
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Sub for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -245,6 +259,15 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_op_assign! { impl SubAssign, sub_assign for Wrapping<$t>, Wrapping<$t> }
+
+        #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
+        impl SubAssign<$t> for Wrapping<$t> {
+            #[inline]
+            fn sub_assign(&mut self, other: $t) {
+                *self = *self - Wrapping(other);
+            }
+        }
+        forward_ref_op_assign! { impl SubAssign, sub_assign for Wrapping<$t>, $t }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Mul for Wrapping<$t> {
@@ -267,6 +290,15 @@ macro_rules! wrapping_impl {
         }
         forward_ref_op_assign! { impl MulAssign, mul_assign for Wrapping<$t>, Wrapping<$t> }
 
+        #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
+        impl MulAssign<$t> for Wrapping<$t> {
+            #[inline]
+            fn mul_assign(&mut self, other: $t) {
+                *self = *self * Wrapping(other);
+            }
+        }
+        forward_ref_op_assign! { impl MulAssign, mul_assign for Wrapping<$t>, $t }
+
         #[stable(feature = "wrapping_div", since = "1.3.0")]
         impl Div for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -288,6 +320,15 @@ macro_rules! wrapping_impl {
         }
         forward_ref_op_assign! { impl DivAssign, div_assign for Wrapping<$t>, Wrapping<$t> }
 
+        #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
+        impl DivAssign<$t> for Wrapping<$t> {
+            #[inline]
+            fn div_assign(&mut self, other: $t) {
+                *self = *self / Wrapping(other);
+            }
+        }
+        forward_ref_op_assign! { impl DivAssign, div_assign for Wrapping<$t>, $t }
+
         #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl Rem for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -308,6 +349,15 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_op_assign! { impl RemAssign, rem_assign for Wrapping<$t>, Wrapping<$t> }
+
+        #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
+        impl RemAssign<$t> for Wrapping<$t> {
+            #[inline]
+            fn rem_assign(&mut self, other: $t) {
+                *self = *self % Wrapping(other);
+            }
+        }
+        forward_ref_op_assign! { impl RemAssign, rem_assign for Wrapping<$t>, $t }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Not for Wrapping<$t> {
@@ -342,6 +392,15 @@ macro_rules! wrapping_impl {
         }
         forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Wrapping<$t>, Wrapping<$t> }
 
+        #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
+        impl BitXorAssign<$t> for Wrapping<$t> {
+            #[inline]
+            fn bitxor_assign(&mut self, other: $t) {
+                *self = *self ^ Wrapping(other);
+            }
+        }
+        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Wrapping<$t>, $t }
+
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitOr for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -363,6 +422,15 @@ macro_rules! wrapping_impl {
         }
         forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Wrapping<$t>, Wrapping<$t> }
 
+        #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
+        impl BitOrAssign<$t> for Wrapping<$t> {
+            #[inline]
+            fn bitor_assign(&mut self, other: $t) {
+                *self = *self | Wrapping(other);
+            }
+        }
+        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Wrapping<$t>, $t }
+
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitAnd for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -383,6 +451,15 @@ macro_rules! wrapping_impl {
             }
         }
         forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Wrapping<$t>, Wrapping<$t> }
+
+        #[stable(feature = "wrapping_int_assign_impl", since = "1.60.0")]
+        impl BitAndAssign<$t> for Wrapping<$t> {
+            #[inline]
+            fn bitand_assign(&mut self, other: $t) {
+                *self = *self & Wrapping(other);
+            }
+        }
+        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Wrapping<$t>, $t }
 
         #[stable(feature = "wrapping_neg", since = "1.10.0")]
         impl Neg for Wrapping<$t> {
@@ -465,6 +542,8 @@ macro_rules! wrapping_int_impl {
             #[inline]
             #[doc(alias = "popcount")]
             #[doc(alias = "popcnt")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn count_ones(self) -> u32 {
                 self.0.count_ones()
@@ -483,6 +562,8 @@ macro_rules! wrapping_int_impl {
             #[doc = concat!("assert_eq!(Wrapping(!0", stringify!($t), ").count_zeros(), 0);")]
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn count_zeros(self) -> u32 {
                 self.0.count_zeros()
@@ -503,6 +584,8 @@ macro_rules! wrapping_int_impl {
             /// assert_eq!(n.trailing_zeros(), 3);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn trailing_zeros(self) -> u32 {
                 self.0.trailing_zeros()
@@ -529,6 +612,8 @@ macro_rules! wrapping_int_impl {
             /// assert_eq!(n.rotate_left(32), m);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn rotate_left(self, n: u32) -> Self {
                 Wrapping(self.0.rotate_left(n))
@@ -555,6 +640,8 @@ macro_rules! wrapping_int_impl {
             /// assert_eq!(n.rotate_right(4), m);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn rotate_right(self, n: u32) -> Self {
                 Wrapping(self.0.rotate_right(n))
@@ -579,6 +666,8 @@ macro_rules! wrapping_int_impl {
             /// assert_eq!(m, Wrapping(21760));
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn swap_bytes(self) -> Self {
                 Wrapping(self.0.swap_bytes())
@@ -606,8 +695,9 @@ macro_rules! wrapping_int_impl {
             /// ```
             #[stable(feature = "reverse_bits", since = "1.37.0")]
             #[rustc_const_stable(feature = "const_reverse_bits", since = "1.37.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
-            #[must_use]
             pub const fn reverse_bits(self) -> Self {
                 Wrapping(self.0.reverse_bits())
             }
@@ -634,6 +724,7 @@ macro_rules! wrapping_int_impl {
             /// }
             /// ```
             #[inline]
+            #[must_use]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn from_be(x: Self) -> Self {
                 Wrapping(<$t>::from_be(x.0))
@@ -661,6 +752,7 @@ macro_rules! wrapping_int_impl {
             /// }
             /// ```
             #[inline]
+            #[must_use]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn from_le(x: Self) -> Self {
                 Wrapping(<$t>::from_le(x.0))
@@ -688,6 +780,8 @@ macro_rules! wrapping_int_impl {
             /// }
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn to_be(self) -> Self {
                 Wrapping(self.0.to_be())
@@ -715,6 +809,8 @@ macro_rules! wrapping_int_impl {
             /// }
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn to_le(self) -> Self {
                 Wrapping(self.0.to_le())
@@ -743,6 +839,8 @@ macro_rules! wrapping_int_impl {
             /// assert_eq!(Wrapping(3i8).pow(6), Wrapping(-39));
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub fn pow(self, exp: u32) -> Self {
                 Wrapping(self.0.wrapping_pow(exp))
@@ -771,6 +869,8 @@ macro_rules! wrapping_int_impl_signed {
             /// assert_eq!(n.leading_zeros(), 3);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn leading_zeros(self) -> u32 {
                 self.0.leading_zeros()
@@ -797,6 +897,8 @@ macro_rules! wrapping_int_impl_signed {
             /// assert_eq!(Wrapping(-128i8).abs().0 as u8, 128u8);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub fn abs(self) -> Wrapping<$t> {
                 Wrapping(self.0.wrapping_abs())
@@ -821,6 +923,8 @@ macro_rules! wrapping_int_impl_signed {
             #[doc = concat!("assert_eq!(Wrapping(-10", stringify!($t), ").signum(), Wrapping(-1));")]
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub fn signum(self) -> Wrapping<$t> {
                 Wrapping(self.0.signum())
@@ -840,6 +944,7 @@ macro_rules! wrapping_int_impl_signed {
             #[doc = concat!("assert!(Wrapping(10", stringify!($t), ").is_positive());")]
             #[doc = concat!("assert!(!Wrapping(-10", stringify!($t), ").is_positive());")]
             /// ```
+            #[must_use]
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn is_positive(self) -> bool {
@@ -860,6 +965,7 @@ macro_rules! wrapping_int_impl_signed {
             #[doc = concat!("assert!(Wrapping(-10", stringify!($t), ").is_negative());")]
             #[doc = concat!("assert!(!Wrapping(10", stringify!($t), ").is_negative());")]
             /// ```
+            #[must_use]
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn is_negative(self) -> bool {
@@ -889,6 +995,8 @@ macro_rules! wrapping_int_impl_unsigned {
             /// assert_eq!(n.leading_zeros(), 2);
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn leading_zeros(self) -> u32 {
                 self.0.leading_zeros()
@@ -907,6 +1015,7 @@ macro_rules! wrapping_int_impl_unsigned {
             #[doc = concat!("assert!(Wrapping(16", stringify!($t), ").is_power_of_two());")]
             #[doc = concat!("assert!(!Wrapping(10", stringify!($t), ").is_power_of_two());")]
             /// ```
+            #[must_use]
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub fn is_power_of_two(self) -> bool {
@@ -931,8 +1040,10 @@ macro_rules! wrapping_int_impl_unsigned {
             #[doc = concat!("assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));")]
             /// ```
             #[inline]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
-                       reason = "needs decision on wrapping behaviour")]
+                       reason = "needs decision on wrapping behavior")]
             pub fn next_power_of_two(self) -> Self {
                 Wrapping(self.0.wrapping_next_power_of_two())
             }

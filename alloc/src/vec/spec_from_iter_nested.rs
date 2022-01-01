@@ -1,7 +1,8 @@
 use core::iter::TrustedLen;
-use core::ptr::{self};
+use core::{cmp, ptr};
 
 use super::{SpecExtend, Vec};
+use crate::raw_vec::RawVec;
 
 /// Another specialization trait for Vec::from_iter
 /// necessary to manually prioritize overlapping specializations
@@ -14,6 +15,7 @@ impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
+    #[track_caller]
     default fn from_iter(mut iterator: I) -> Self {
         // Unroll the first iteration, as the vector is going to be
         // expanded on this iteration in every case when the iterable is not
@@ -24,8 +26,11 @@ where
             None => return Vec::new(),
             Some(element) => {
                 let (lower, _) = iterator.size_hint();
-                let mut vector = Vec::with_capacity(lower.saturating_add(1));
+                let initial_capacity =
+                    cmp::max(RawVec::<T>::MIN_NON_ZERO_CAP, lower.saturating_add(1));
+                let mut vector = Vec::with_capacity(initial_capacity);
                 unsafe {
+                    // SAFETY: We requested capacity at least 1
                     ptr::write(vector.as_mut_ptr(), element);
                     vector.set_len(1);
                 }
@@ -43,6 +48,7 @@ impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: TrustedLen<Item = T>,
 {
+    #[track_caller]
     fn from_iter(iterator: I) -> Self {
         let mut vector = match iterator.size_hint() {
             (_, Some(upper)) => Vec::with_capacity(upper),

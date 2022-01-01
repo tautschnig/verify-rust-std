@@ -28,7 +28,7 @@
 //! When the main thread of a Rust program terminates, the entire program shuts
 //! down, even if other threads are still running. However, this module provides
 //! convenient facilities for automatically waiting for the termination of a
-//! child thread (i.e., join).
+//! thread (i.e., join).
 //!
 //! ## Spawning a thread
 //!
@@ -42,38 +42,43 @@
 //! });
 //! ```
 //!
-//! In this example, the spawned thread is "detached" from the current
-//! thread. This means that it can outlive its parent (the thread that spawned
-//! it), unless this parent is the main thread.
+//! In this example, the spawned thread is "detached," which means that there is
+//! no way for the program to learn when the spawned thread completes or otherwise
+//! terminates.
 //!
-//! The parent thread can also wait on the completion of the child
-//! thread; a call to [`spawn`] produces a [`JoinHandle`], which provides
-//! a `join` method for waiting:
+//! To learn when a thread completes, it is necessary to capture the [`JoinHandle`]
+//! object that is returned by the call to [`spawn`], which provides
+//! a `join` method that allows the caller to wait for the completion of the
+//! spawned thread:
 //!
 //! ```rust
 //! use std::thread;
 //!
-//! let child = thread::spawn(move || {
+//! let thread_join_handle = thread::spawn(move || {
 //!     // some work here
 //! });
 //! // some work here
-//! let res = child.join();
+//! let res = thread_join_handle.join();
 //! ```
 //!
 //! The [`join`] method returns a [`thread::Result`] containing [`Ok`] of the final
-//! value produced by the child thread, or [`Err`] of the value given to
-//! a call to [`panic!`] if the child panicked.
+//! value produced by the spawned thread, or [`Err`] of the value given to
+//! a call to [`panic!`] if the thread panicked.
+//!
+//! Note that there is no parent/child relationship between a thread that spawns a
+//! new thread and the thread being spawned.  In particular, the spawned thread may or
+//! may not outlive the spawning thread, unless the spawning thread is the main thread.
 //!
 //! ## Configuring threads
 //!
 //! A new thread can be configured before it is spawned via the [`Builder`] type,
-//! which currently allows you to set the name and stack size for the child thread:
+//! which currently allows you to set the name and stack size for the thread:
 //!
 //! ```rust
 //! # #![allow(unused_must_use)]
 //! use std::thread;
 //!
-//! thread::Builder::new().name("child1".to_string()).spawn(move || {
+//! thread::Builder::new().name("thread1".to_string()).spawn(move || {
 //!     println!("Hello, world!");
 //! });
 //! ```
@@ -111,7 +116,7 @@
 //! Threads are able to have associated names for identification purposes. By default, spawned
 //! threads are unnamed. To specify a name for a thread, build the thread with [`Builder`] and pass
 //! the desired thread name to [`Builder::name`]. To retrieve the thread name from within the
-//! thread, use [`Thread::name`]. A couple examples of where the name of a thread gets used:
+//! thread, use [`Thread::name`]. A couple of examples where the name of a thread gets used:
 //!
 //! * If a panic occurs in a named thread, the thread name will be printed in the panic message.
 //! * The thread name is provided to the OS where applicable (e.g., `pthread_setname_np` in
@@ -119,13 +124,15 @@
 //!
 //! ## Stack size
 //!
-//! The default stack size for spawned threads is 2 MiB, though this particular stack size is
-//! subject to change in the future. There are two ways to manually specify the stack size for
-//! spawned threads:
+//! The default stack size is platform-dependent and subject to change.
+//! Currently, it is 2 MiB on all Tier-1 platforms.
+//!
+//! There are two ways to manually specify the stack size for spawned threads:
 //!
 //! * Build the thread with [`Builder`] and pass the desired stack size to [`Builder::stack_size`].
 //! * Set the `RUST_MIN_STACK` environment variable to an integer representing the desired stack
-//!   size (in bytes). Note that setting [`Builder::stack_size`] will override this.
+//!   size (in bytes). Note that setting [`Builder::stack_size`] will override this. Be aware that
+//!   changes to `RUST_MIN_STACK` may be ignored after program start.
 //!
 //! Note that the stack size of the main thread is *not* determined by Rust.
 //!
@@ -134,38 +141,57 @@
 //! [`Result`]: crate::result::Result
 //! [`Ok`]: crate::result::Result::Ok
 //! [`Err`]: crate::result::Result::Err
-//! [`thread::current`]: current
+//! [`thread::current`]: current::current
 //! [`thread::Result`]: Result
 //! [`unpark`]: Thread::unpark
 //! [`thread::park_timeout`]: park_timeout
 //! [`Cell`]: crate::cell::Cell
 //! [`RefCell`]: crate::cell::RefCell
 //! [`with`]: LocalKey::with
+//! [`thread_local!`]: crate::thread_local
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
+// Under `test`, `__FastLocalKeyInner` seems unused.
+#![cfg_attr(test, allow(dead_code))]
 
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
 mod tests;
+
+use core::cell::SyncUnsafeCell;
+use core::ffi::CStr;
+use core::mem::MaybeUninit;
 
 use crate::any::Any;
 use crate::cell::UnsafeCell;
-use crate::ffi::{CStr, CString};
-use crate::fmt;
-use crate::io;
-use crate::mem;
-use crate::num::NonZeroU64;
-use crate::panic;
-use crate::panicking;
-use crate::str;
+use crate::marker::PhantomData;
+use crate::mem::{self, ManuallyDrop, forget};
+use crate::num::NonZero;
+use crate::pin::Pin;
 use crate::sync::Arc;
+use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sys::sync::Parker;
 use crate::sys::thread as imp;
-use crate::sys_common::mutex;
-use crate::sys_common::thread;
-use crate::sys_common::thread_info;
-use crate::sys_common::thread_parker::Parker;
 use crate::sys_common::{AsInner, IntoInner};
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
+use crate::{env, fmt, io, panic, panicking, str};
+
+#[stable(feature = "scoped_threads", since = "1.63.0")]
+mod scoped;
+
+#[stable(feature = "scoped_threads", since = "1.63.0")]
+pub use scoped::{Scope, ScopedJoinHandle, scope};
+
+mod current;
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use current::current;
+pub(crate) use current::{current_id, current_or_unnamed, drop_current, set_current, try_current};
+
+mod spawnhook;
+
+#[unstable(feature = "thread_spawn_hook", issue = "132951")]
+pub use spawnhook::add_spawn_hook;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Thread-local storage
@@ -174,42 +200,15 @@ use crate::time::Duration;
 #[macro_use]
 mod local;
 
-#[unstable(feature = "available_concurrency", issue = "74479")]
-mod available_concurrency;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{AccessError, LocalKey};
 
-#[unstable(feature = "available_concurrency", issue = "74479")]
-pub use available_concurrency::available_concurrency;
-
-// The types used by the thread_local! macro to access TLS keys. Note that there
-// are two types, the "OS" type and the "fast" type. The OS thread local key
-// type is accessed via platform-specific API calls and is slow, while the fast
-// key type is accessed via code generated via LLVM, where TLS keys are set up
-// by the elf linker. Note that the OS TLS type is always available: on macOS
-// the standard library is compiled with support for older platform versions
-// where fast TLS was not available; end-user code is compiled with fast TLS
-// where available, but both are needed.
-
-#[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(target_thread_local)]
+// Implementation details used by the thread_local!{} macro.
 #[doc(hidden)]
-pub use self::local::fast::Key as __FastLocalKeyInner;
-#[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[doc(hidden)]
-pub use self::local::os::Key as __OsLocalKeyInner;
-#[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
-#[doc(hidden)]
-pub use self::local::statik::Key as __StaticLocalKeyInner;
-
-// This is only used to make thread locals with `const { .. }` initialization
-// expressions unstable. If and/or when that syntax is stabilized with thread
-// locals this will simply be removed.
-#[doc(hidden)]
-#[unstable(feature = "thread_local_const_init", issue = "84223")]
-pub const fn require_unstable_const_init_thread_local() {}
+#[unstable(feature = "thread_local_internals", issue = "none")]
+pub mod local_impl {
+    pub use crate::sys::thread_local::*;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
@@ -257,6 +256,7 @@ pub const fn require_unstable_const_init_thread_local() {}
 /// [`unwrap`]: crate::result::Result::unwrap
 /// [naming-threads]: ./index.html#naming-threads
 /// [stack-size]: ./index.html#stack-size
+#[must_use = "must eventually spawn the thread"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Builder {
@@ -264,6 +264,8 @@ pub struct Builder {
     name: Option<String>,
     // The size of the stack for the spawned thread in bytes
     stack_size: Option<usize>,
+    // Skip running and inheriting the thread spawn hooks
+    no_hooks: bool,
 }
 
 impl Builder {
@@ -287,7 +289,7 @@ impl Builder {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
-        Builder { name: None, stack_size: None }
+        Builder { name: None, stack_size: None, no_hooks: false }
     }
 
     /// Names the thread-to-be. Currently the name is used for identification
@@ -343,13 +345,23 @@ impl Builder {
         self
     }
 
+    /// Disables running and inheriting [spawn hooks](add_spawn_hook).
+    ///
+    /// Use this if the parent thread is in no way relevant for the child thread.
+    /// For example, when lazily spawning threads for a thread pool.
+    #[unstable(feature = "thread_spawn_hook", issue = "132951")]
+    pub fn no_hooks(mut self) -> Builder {
+        self.no_hooks = true;
+        self
+    }
+
     /// Spawns a new thread by taking ownership of the `Builder`, and returns an
     /// [`io::Result`] to its [`JoinHandle`].
     ///
     /// The spawned thread may outlive the caller (unless the caller thread
     /// is the main thread; the whole process is terminated when the main
     /// thread finishes). The join handle can be used to block on
-    /// termination of the child thread, including recovering its panics.
+    /// termination of the spawned thread, including recovering its panics.
     ///
     /// For a more complete documentation see [`thread::spawn`][`spawn`].
     ///
@@ -394,7 +406,7 @@ impl Builder {
     /// The spawned thread may outlive the caller (unless the caller thread
     /// is the main thread; the whole process is terminated when the main
     /// thread finishes). The join handle can be used to block on
-    /// termination of the child thread, including recovering its panics.
+    /// termination of the spawned thread, including recovering its panics.
     ///
     /// This method is identical to [`thread::Builder::spawn`][`Builder::spawn`],
     /// except for the relaxed lifetime bounds, which render it unsafe.
@@ -412,9 +424,9 @@ impl Builder {
     ///
     /// # Safety
     ///
-    /// The caller has to ensure that no references in the supplied thread closure
-    /// or its return type can outlive the spawned thread's lifetime. This can be
-    /// guaranteed in two ways:
+    /// The caller has to ensure that the spawned thread does not outlive any
+    /// references in the supplied thread closure and its return type.
+    /// This can be guaranteed in two ways:
     ///
     /// - ensure that [`join`][`JoinHandle::join`] is called before any referenced
     /// data is dropped
@@ -425,7 +437,6 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// #![feature(thread_spawn_unchecked)]
     /// use std::thread;
     ///
     /// let builder = thread::Builder::new();
@@ -446,48 +457,133 @@ impl Builder {
     /// ```
     ///
     /// [`io::Result`]: crate::io::Result
-    #[unstable(feature = "thread_spawn_unchecked", issue = "55132")]
-    pub unsafe fn spawn_unchecked<'a, F, T>(self, f: F) -> io::Result<JoinHandle<T>>
+    #[stable(feature = "thread_spawn_unchecked", since = "1.82.0")]
+    pub unsafe fn spawn_unchecked<F, T>(self, f: F) -> io::Result<JoinHandle<T>>
     where
         F: FnOnce() -> T,
-        F: Send + 'a,
-        T: Send + 'a,
+        F: Send,
+        T: Send,
     {
-        let Builder { name, stack_size } = self;
+        Ok(JoinHandle(unsafe { self.spawn_unchecked_(f, None) }?))
+    }
 
-        let stack_size = stack_size.unwrap_or_else(thread::min_stack);
+    unsafe fn spawn_unchecked_<'scope, F, T>(
+        self,
+        f: F,
+        scope_data: Option<Arc<scoped::ScopeData>>,
+    ) -> io::Result<JoinInner<'scope, T>>
+    where
+        F: FnOnce() -> T,
+        F: Send,
+        T: Send,
+    {
+        let Builder { name, stack_size, no_hooks } = self;
 
-        let my_thread = Thread::new(name);
+        let stack_size = stack_size.unwrap_or_else(|| {
+            static MIN: AtomicUsize = AtomicUsize::new(0);
+
+            match MIN.load(Ordering::Relaxed) {
+                0 => {}
+                n => return n - 1,
+            }
+
+            let amt = env::var_os("RUST_MIN_STACK")
+                .and_then(|s| s.to_str().and_then(|s| s.parse().ok()))
+                .unwrap_or(imp::DEFAULT_MIN_STACK_SIZE);
+
+            // 0 is our sentinel value, so ensure that we'll never see 0 after
+            // initialization has run
+            MIN.store(amt + 1, Ordering::Relaxed);
+            amt
+        });
+
+        let id = ThreadId::new();
+        let my_thread = match name {
+            Some(name) => Thread::new(id, name.into()),
+            None => Thread::new_unnamed(id),
+        };
+
+        let hooks = if no_hooks {
+            spawnhook::ChildSpawnHooks::default()
+        } else {
+            spawnhook::run_spawn_hooks(&my_thread)
+        };
+
         let their_thread = my_thread.clone();
 
-        let my_packet: Arc<UnsafeCell<Option<Result<T>>>> = Arc::new(UnsafeCell::new(None));
+        let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
+            scope: scope_data,
+            result: UnsafeCell::new(None),
+            _marker: PhantomData,
+        });
         let their_packet = my_packet.clone();
 
-        let output_capture = crate::io::set_output_capture(None);
-        crate::io::set_output_capture(output_capture.clone());
+        // Pass `f` in `MaybeUninit` because actually that closure might *run longer than the lifetime of `F`*.
+        // See <https://github.com/rust-lang/rust/issues/101983> for more details.
+        // To prevent leaks we use a wrapper that drops its contents.
+        #[repr(transparent)]
+        struct MaybeDangling<T>(mem::MaybeUninit<T>);
+        impl<T> MaybeDangling<T> {
+            fn new(x: T) -> Self {
+                MaybeDangling(mem::MaybeUninit::new(x))
+            }
+            fn into_inner(self) -> T {
+                // Make sure we don't drop.
+                let this = ManuallyDrop::new(self);
+                // SAFETY: we are always initialized.
+                unsafe { this.0.assume_init_read() }
+            }
+        }
+        impl<T> Drop for MaybeDangling<T> {
+            fn drop(&mut self) {
+                // SAFETY: we are always initialized.
+                unsafe { self.0.assume_init_drop() };
+            }
+        }
 
+        let f = MaybeDangling::new(f);
         let main = move || {
+            if let Err(_thread) = set_current(their_thread.clone()) {
+                // Both the current thread handle and the ID should not be
+                // initialized yet. Since only the C runtime and some of our
+                // platform code run before this, this point shouldn't be
+                // reachable. Use an abort to save binary size (see #123356).
+                rtabort!("something here is badly broken!");
+            }
+
             if let Some(name) = their_thread.cname() {
                 imp::Thread::set_name(name);
             }
 
-            crate::io::set_output_capture(output_capture);
-
-            // SAFETY: the stack guard passed is the one for the current thread.
-            // This means the current thread's stack and the new thread's stack
-            // are properly set and protected from each other.
-            thread_info::set(unsafe { imp::guard::current() }, their_thread);
+            let f = f.into_inner();
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                crate::sys_common::backtrace::__rust_begin_short_backtrace(f)
+                crate::sys::backtrace::__rust_begin_short_backtrace(|| hooks.run());
+                crate::sys::backtrace::__rust_begin_short_backtrace(f)
             }));
             // SAFETY: `their_packet` as been built just above and moved by the
             // closure (it is an Arc<...>) and `my_packet` will be stored in the
             // same `JoinInner` as this closure meaning the mutation will be
             // safe (not modify it and affect a value far away).
-            unsafe { *their_packet.get() = Some(try_result) };
+            unsafe { *their_packet.result.get() = Some(try_result) };
+            // Here `their_packet` gets dropped, and if this is the last `Arc` for that packet that
+            // will call `decrement_num_running_threads` and therefore signal that this thread is
+            // done.
+            drop(their_packet);
+            // Here, the lifetime `'scope` can end. `main` keeps running for a bit
+            // after that before returning itself.
         };
 
-        Ok(JoinHandle(JoinInner {
+        if let Some(scope_data) = &my_packet.scope {
+            scope_data.increment_num_running_threads();
+        }
+
+        let main = Box::new(main);
+        // SAFETY: dynamic size and alignment of the Box remain the same. See below for why the
+        // lifetime change is justified.
+        let main =
+            unsafe { Box::from_raw(Box::into_raw(main) as *mut (dyn FnOnce() + Send + 'static)) };
+
+        Ok(JoinInner {
             // SAFETY:
             //
             // `imp::Thread::new` takes a closure with a `'static` lifetime, since it's passed
@@ -501,17 +597,10 @@ impl Builder {
             // Similarly, the `sys` implementation must guarantee that no references to the closure
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
-            native: unsafe {
-                Some(imp::Thread::new(
-                    stack_size,
-                    mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(
-                        Box::new(main),
-                    ),
-                )?)
-            },
+            native: unsafe { imp::Thread::new(stack_size, main)? },
             thread: my_thread,
-            packet: Packet(my_packet),
-        }))
+            packet: my_packet,
+        })
     }
 }
 
@@ -521,15 +610,16 @@ impl Builder {
 
 /// Spawns a new thread, returning a [`JoinHandle`] for it.
 ///
-/// The join handle will implicitly *detach* the child thread upon being
-/// dropped. In this case, the child thread may outlive the parent (unless
-/// the parent thread is the main thread; the whole process is terminated when
-/// the main thread finishes). Additionally, the join handle provides a [`join`]
-/// method that can be used to join the child thread. If the child thread
-/// panics, [`join`] will return an [`Err`] containing the argument given to
-/// [`panic!`].
+/// The join handle provides a [`join`] method that can be used to join the spawned
+/// thread. If the spawned thread panics, [`join`] will return an [`Err`] containing
+/// the argument given to [`panic!`].
 ///
-/// This will create a thread using default parameters of [`Builder`], if you
+/// If the join handle is dropped, the spawned thread will implicitly be *detached*.
+/// In this case, the spawned thread may no longer be joined.
+/// (It is the responsibility of the program to either eventually join threads it
+/// creates or detach them; otherwise, a resource leak will result.)
+///
+/// This call will create a thread using default parameters of [`Builder`], if you
 /// want to specify the stack size or the name of the thread, use this API
 /// instead.
 ///
@@ -538,8 +628,8 @@ impl Builder {
 ///
 /// - The `'static` constraint means that the closure and its return value
 ///   must have a lifetime of the whole program execution. The reason for this
-///   is that threads can `detach` and outlive the lifetime they have been
-///   created in.
+///   is that threads can outlive the lifetime they have been created in.
+///
 ///   Indeed if the thread, and by extension its return value, can outlive their
 ///   caller, we need to make sure that they will be valid afterwards, and since
 ///   we *can't* know when it will return we need to have them valid as long as
@@ -591,7 +681,7 @@ impl Builder {
 ///
 /// let receiver = thread::spawn(move || {
 ///     let value = rx.recv().expect("Unable to receive from channel");
-///     println!("{}", value);
+///     println!("{value}");
 /// });
 ///
 /// sender.join().expect("The sender thread has panicked");
@@ -611,9 +701,22 @@ impl Builder {
 /// });
 ///
 /// let result = computation.join().unwrap();
-/// println!("{}", result);
+/// println!("{result}");
 /// ```
 ///
+/// # Notes
+///
+/// This function has the same minimal guarantee regarding "foreign" unwinding operations (e.g.
+/// an exception thrown from C++ code, or a `panic!` in Rust code compiled or linked with a
+/// different runtime) as [`catch_unwind`]; namely, if the thread created with `thread::spawn`
+/// unwinds all the way to the root with such an exception, one of two behaviors are possible,
+/// and it is unspecified which will occur:
+///
+/// * The process aborts.
+/// * The process does not abort, and [`join`] will return a `Result::Err`
+///   containing an opaque type.
+///
+/// [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
 /// [`channels`]: crate::sync::mpsc
 /// [`join`]: JoinHandle::join
 /// [`Err`]: crate::result::Result::Err
@@ -627,51 +730,25 @@ where
     Builder::new().spawn(f).expect("failed to spawn thread")
 }
 
-/// Gets a handle to the thread that invokes it.
-///
-/// # Examples
-///
-/// Getting a handle to the current thread with `thread::current()`:
-///
-/// ```
-/// use std::thread;
-///
-/// let handler = thread::Builder::new()
-///     .name("named thread".into())
-///     .spawn(|| {
-///         let handle = thread::current();
-///         assert_eq!(handle.name(), Some("named thread"));
-///     })
-///     .unwrap();
-///
-/// handler.join().unwrap();
-/// ```
-#[stable(feature = "rust1", since = "1.0.0")]
-pub fn current() -> Thread {
-    thread_info::current_thread().expect(
-        "use of std::thread::current() is not possible \
-         after the thread's local data has been destroyed",
-    )
-}
-
 /// Cooperatively gives up a timeslice to the OS scheduler.
 ///
-/// This is used when the programmer knows that the thread will have nothing
-/// to do for some time, and thus avoid wasting computing time.
+/// This calls the underlying OS scheduler's yield primitive, signaling
+/// that the calling thread is willing to give up its remaining timeslice
+/// so that the OS may schedule other threads on the CPU.
 ///
-/// For example when polling on a resource, it is common to check that it is
-/// available, and if not to yield in order to avoid busy waiting.
+/// A drawback of yielding in a loop is that if the OS does not have any
+/// other ready threads to run on the current CPU, the thread will effectively
+/// busy-wait, which wastes CPU time and energy.
 ///
-/// Thus the pattern of `yield`ing after a failed poll is rather common when
-/// implementing low-level shared resources or synchronization primitives.
+/// Therefore, when waiting for events of interest, a programmer's first
+/// choice should be to use synchronization devices such as [`channel`]s,
+/// [`Condvar`]s, [`Mutex`]es or [`join`] since these primitives are
+/// implemented in a blocking manner, giving up the CPU until the event
+/// of interest has occurred which avoids repeated yielding.
 ///
-/// However programmers will usually prefer to use [`channel`]s, [`Condvar`]s,
-/// [`Mutex`]es or [`join`] for their synchronization routines, as they avoid
-/// thinking about thread scheduling.
-///
-/// Note that [`channel`]s for example are implemented using this primitive.
-/// Indeed when you call `send` or `recv`, which are blocking, they will yield
-/// if the channel is not available.
+/// `yield_now` should thus be used only rarely, mostly in situations where
+/// repeated polling is required because there is no other suitable way to
+/// learn when an event of interest has occurred.
 ///
 /// # Examples
 ///
@@ -733,11 +810,14 @@ pub fn yield_now() {
 ///
 /// [Mutex]: crate::sync::Mutex
 #[inline]
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn panicking() -> bool {
     panicking::panicking()
 }
 
+/// Uses [`sleep`].
+///
 /// Puts the current thread to sleep for at least the specified amount of time.
 ///
 /// The thread may sleep longer than the duration specified due to scheduling
@@ -761,7 +841,7 @@ pub fn panicking() -> bool {
 /// thread::sleep_ms(2000);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::thread::sleep`")]
+#[deprecated(since = "1.6.0", note = "replaced by `std::thread::sleep`")]
 pub fn sleep_ms(ms: u32) {
     sleep(Duration::from_millis(ms as u64))
 }
@@ -808,12 +888,104 @@ pub fn sleep(dur: Duration) {
     imp::Thread::sleep(dur)
 }
 
+/// Puts the current thread to sleep until the specified deadline has passed.
+///
+/// The thread may still be asleep after the deadline specified due to
+/// scheduling specifics or platform-dependent functionality. It will never
+/// wake before.
+///
+/// This function is blocking, and should not be used in `async` functions.
+///
+/// # Platform-specific behavior
+///
+/// This function uses [`sleep`] internally, see its platform-specific behavior.
+///
+///
+/// # Examples
+///
+/// A simple game loop that limits the game to 60 frames per second.
+///
+/// ```no_run
+/// #![feature(thread_sleep_until)]
+/// # use std::time::{Duration, Instant};
+/// # use std::thread;
+/// #
+/// # fn update() {}
+/// # fn render() {}
+/// #
+/// let max_fps = 60.0;
+/// let frame_time = Duration::from_secs_f32(1.0/max_fps);
+/// let mut next_frame = Instant::now();
+/// loop {
+///     thread::sleep_until(next_frame);
+///     next_frame += frame_time;
+///     update();
+///     render();
+/// }
+/// ```
+///
+/// A slow api we must not call too fast and which takes a few
+/// tries before succeeding. By using `sleep_until` the time the
+/// api call takes does not influence when we retry or when we give up
+///
+/// ```no_run
+/// #![feature(thread_sleep_until)]
+/// # use std::time::{Duration, Instant};
+/// # use std::thread;
+/// #
+/// # enum Status {
+/// #     Ready(usize),
+/// #     Waiting,
+/// # }
+/// # fn slow_web_api_call() -> Status { Status::Ready(42) }
+/// #
+/// # const MAX_DURATION: Duration = Duration::from_secs(10);
+/// #
+/// # fn try_api_call() -> Result<usize, ()> {
+/// let deadline = Instant::now() + MAX_DURATION;
+/// let delay = Duration::from_millis(250);
+/// let mut next_attempt = Instant::now();
+/// loop {
+///     if Instant::now() > deadline {
+///         break Err(());
+///     }
+///     if let Status::Ready(data) = slow_web_api_call() {
+///         break Ok(data);
+///     }
+///
+///     next_attempt = deadline.min(next_attempt + delay);
+///     thread::sleep_until(next_attempt);
+/// }
+/// # }
+/// # let _data = try_api_call();
+/// ```
+#[unstable(feature = "thread_sleep_until", issue = "113752")]
+pub fn sleep_until(deadline: Instant) {
+    let now = Instant::now();
+
+    if let Some(delay) = deadline.checked_duration_since(now) {
+        sleep(delay);
+    }
+}
+
+/// Used to ensure that `park` and `park_timeout` do not unwind, as that can
+/// cause undefined behavior if not handled correctly (see #102398 for context).
+struct PanicGuard;
+
+impl Drop for PanicGuard {
+    fn drop(&mut self) {
+        rtabort!("an irrecoverable error occurred while synchronizing threads")
+    }
+}
+
 /// Blocks unless or until the current thread's token is made available.
 ///
 /// A call to `park` does not guarantee that the thread will remain parked
-/// forever, and callers should be prepared for this possibility.
+/// forever, and callers should be prepared for this possibility. However,
+/// it is guaranteed that this function will not panic (it may abort the
+/// process if the implementation encounters some rare errors).
 ///
-/// # park and unpark
+/// # `park` and `unpark`
 ///
 /// Every thread is equipped with some basic low-level blocking support, via the
 /// [`thread::park`][`park`] function and [`thread::Thread::unpark`][`unpark`]
@@ -834,14 +1006,6 @@ pub fn sleep(dur: Duration) {
 ///   if it wasn't already. Because the token is initially absent, [`unpark`]
 ///   followed by [`park`] will result in the second call returning immediately.
 ///
-/// In other words, each [`Thread`] acts a bit like a spinlock that can be
-/// locked and unlocked using `park` and `unpark`.
-///
-/// Notice that being unblocked does not imply any synchronization with someone
-/// that unparked this thread, it could also be spurious.
-/// For example, it would be a valid, but inefficient, implementation to make both [`park`] and
-/// [`unpark`] return immediately without doing anything.
-///
 /// The API is typically used by acquiring a handle to the current thread,
 /// placing that handle in a shared data structure so that other threads can
 /// find it, and then `park`ing in a loop. When some desired condition is met, another
@@ -854,6 +1018,23 @@ pub fn sleep(dur: Duration) {
 ///   blocking/signaling.
 ///
 /// * It can be implemented very efficiently on many platforms.
+///
+/// # Memory Ordering
+///
+/// Calls to `park` _synchronize-with_ calls to `unpark`, meaning that memory
+/// operations performed before a call to `unpark` are made visible to the thread that
+/// consumes the token and returns from `park`. Note that all `park` and `unpark`
+/// operations for a given thread form a total order and `park` synchronizes-with
+/// _all_ prior `unpark` operations.
+///
+/// In atomic ordering terms, `unpark` performs a `Release` operation and `park`
+/// performs the corresponding `Acquire` operation. Calls to `unpark` for the same
+/// thread form a [release sequence].
+///
+/// Note that being unblocked does not imply a call was made to `unpark`, because
+/// wakeups can also be spurious. For example, a valid, but inefficient,
+/// implementation could have `park` and `unpark` return immediately without doing anything,
+/// making *all* wakeups spurious.
 ///
 /// # Examples
 ///
@@ -868,7 +1049,7 @@ pub fn sleep(dur: Duration) {
 /// let parked_thread = thread::spawn(move || {
 ///     // We want to wait until the flag is set. We *could* just spin, but using
 ///     // park/unpark is more efficient.
-///     while !flag2.load(Ordering::Acquire) {
+///     while !flag2.load(Ordering::Relaxed) {
 ///         println!("Parking thread");
 ///         thread::park();
 ///         // We *could* get here spuriously, i.e., way before the 10ms below are over!
@@ -885,7 +1066,7 @@ pub fn sleep(dur: Duration) {
 /// // There is no race condition here, if `unpark`
 /// // happens first, `park` will return immediately.
 /// // Hence there is no risk of a deadlock.
-/// flag.store(true, Ordering::Release);
+/// flag.store(true, Ordering::Relaxed);
 /// println!("Unpark the thread");
 /// parked_thread.thread().unpark();
 ///
@@ -894,15 +1075,19 @@ pub fn sleep(dur: Duration) {
 ///
 /// [`unpark`]: Thread::unpark
 /// [`thread::park_timeout`]: park_timeout
+/// [release sequence]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release_sequence
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn park() {
+    let guard = PanicGuard;
     // SAFETY: park_timeout is called on the parker owned by this thread.
     unsafe {
-        current().inner.parker.park();
+        current().park();
     }
+    // No panic occurred, do not abort.
+    forget(guard);
 }
 
-/// Use [`park_timeout`].
+/// Uses [`park_timeout`].
 ///
 /// Blocks unless or until the current thread's token is made available or
 /// the specified duration has been reached (may wake spuriously).
@@ -910,12 +1095,12 @@ pub fn park() {
 /// The semantics of this function are equivalent to [`park`] except
 /// that the thread will be blocked for roughly no longer than `dur`. This
 /// method should not be used for precise timing due to anomalies such as
-/// preemption or platform differences that may not cause the maximum
+/// preemption or platform differences that might not cause the maximum
 /// amount of time waited to be precisely `ms` long.
 ///
 /// See the [park documentation][`park`] for more detail.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::thread::park_timeout`")]
+#[deprecated(since = "1.6.0", note = "replaced by `std::thread::park_timeout`")]
 pub fn park_timeout_ms(ms: u32) {
     park_timeout(Duration::from_millis(ms as u64))
 }
@@ -926,7 +1111,7 @@ pub fn park_timeout_ms(ms: u32) {
 /// The semantics of this function are equivalent to [`park`][park] except
 /// that the thread will be blocked for roughly no longer than `dur`. This
 /// method should not be used for precise timing due to anomalies such as
-/// preemption or platform differences that may not cause the maximum
+/// preemption or platform differences that might not cause the maximum
 /// amount of time waited to be precisely `dur` long.
 ///
 /// See the [park documentation][park] for more details.
@@ -954,16 +1139,19 @@ pub fn park_timeout_ms(ms: u32) {
 ///     if elapsed >= timeout {
 ///         break;
 ///     }
-///     println!("restarting park_timeout after {:?}", elapsed);
+///     println!("restarting park_timeout after {elapsed:?}");
 ///     timeout_remaining = timeout - elapsed;
 /// }
 /// ```
 #[stable(feature = "park_timeout", since = "1.4.0")]
 pub fn park_timeout(dur: Duration) {
-    // SAFETY: park_timeout is called on the parker owned by this thread.
+    let guard = PanicGuard;
+    // SAFETY: park_timeout is called on a handle owned by this thread.
     unsafe {
-        current().inner.parker.park_timeout(dur);
+        current().park_timeout(dur);
     }
+    // No panic occurred, do not abort.
+    forget(guard);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -972,10 +1160,13 @@ pub fn park_timeout(dur: Duration) {
 
 /// A unique identifier for a running thread.
 ///
-/// A `ThreadId` is an opaque object that has a unique value for each thread
-/// that creates one. `ThreadId`s are not guaranteed to correspond to a thread's
-/// system-designated identifier. A `ThreadId` can be retrieved from the [`id`]
-/// method on a [`Thread`].
+/// A `ThreadId` is an opaque object that uniquely identifies each thread
+/// created during the lifetime of a process. `ThreadId`s are guaranteed not to
+/// be reused, even when a thread terminates. `ThreadId`s are under the control
+/// of Rust's standard library and there may not be any relationship between
+/// `ThreadId` and the underlying platform's notion of a thread identifier --
+/// the two concepts cannot, therefore, be used interchangeably. A `ThreadId`
+/// can be retrieved from the [`id`] method on a [`Thread`].
 ///
 /// # Examples
 ///
@@ -993,29 +1184,56 @@ pub fn park_timeout(dur: Duration) {
 /// [`id`]: Thread::id
 #[stable(feature = "thread_id", since = "1.19.0")]
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
-pub struct ThreadId(NonZeroU64);
+pub struct ThreadId(NonZero<u64>);
 
 impl ThreadId {
     // Generate a new unique thread ID.
-    fn new() -> ThreadId {
-        // It is UB to attempt to acquire this mutex reentrantly!
-        static GUARD: mutex::StaticMutex = mutex::StaticMutex::new();
-        static mut COUNTER: u64 = 1;
-
-        unsafe {
-            let _guard = GUARD.lock();
-
-            // If we somehow use up all our bits, panic so that we're not
-            // covering up subtle bugs of IDs being reused.
-            if COUNTER == u64::MAX {
-                panic!("failed to generate unique thread ID: bitspace exhausted");
-            }
-
-            let id = COUNTER;
-            COUNTER += 1;
-
-            ThreadId(NonZeroU64::new(id).unwrap())
+    pub(crate) fn new() -> ThreadId {
+        #[cold]
+        fn exhausted() -> ! {
+            panic!("failed to generate unique thread ID: bitspace exhausted")
         }
+
+        cfg_if::cfg_if! {
+            if #[cfg(target_has_atomic = "64")] {
+                use crate::sync::atomic::AtomicU64;
+
+                static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+                let mut last = COUNTER.load(Ordering::Relaxed);
+                loop {
+                    let Some(id) = last.checked_add(1) else {
+                        exhausted();
+                    };
+
+                    match COUNTER.compare_exchange_weak(last, id, Ordering::Relaxed, Ordering::Relaxed) {
+                        Ok(_) => return ThreadId(NonZero::new(id).unwrap()),
+                        Err(id) => last = id,
+                    }
+                }
+            } else {
+                use crate::sync::{Mutex, PoisonError};
+
+                static COUNTER: Mutex<u64> = Mutex::new(0);
+
+                let mut counter = COUNTER.lock().unwrap_or_else(PoisonError::into_inner);
+                let Some(id) = counter.checked_add(1) else {
+                    // in case the panic handler ends up calling `ThreadId::new()`,
+                    // avoid reentrant lock acquire.
+                    drop(counter);
+                    exhausted();
+                };
+
+                *counter = id;
+                drop(counter);
+                ThreadId(NonZero::new(id).unwrap())
+            }
+        }
+    }
+
+    #[cfg(not(target_thread_local))]
+    fn from_u64(v: u64) -> Option<ThreadId> {
+        NonZero::new(v).map(ThreadId)
     }
 
     /// This returns a numeric identifier for the thread identified by this
@@ -1026,8 +1244,9 @@ impl ThreadId {
     /// value is entirely opaque -- only equality testing is stable. Note that
     /// it is not guaranteed which values new threads will return, and this may
     /// change across Rust versions.
+    #[must_use]
     #[unstable(feature = "thread_id_value", issue = "67939")]
-    pub fn as_u64(&self) -> NonZeroU64 {
+    pub fn as_u64(&self) -> NonZero<u64> {
         self.0
     }
 }
@@ -1036,11 +1255,115 @@ impl ThreadId {
 // Thread
 ////////////////////////////////////////////////////////////////////////////////
 
-/// The internal representation of a `Thread` handle
-struct Inner {
-    name: Option<CString>, // Guaranteed to be UTF-8
+// This module ensures private fields are kept private, which is necessary to enforce the safety requirements.
+mod thread_name_string {
+    use core::str;
+
+    use crate::ffi::{CStr, CString};
+
+    /// Like a `String` it's guaranteed UTF-8 and like a `CString` it's null terminated.
+    pub(crate) struct ThreadNameString {
+        inner: CString,
+    }
+
+    impl ThreadNameString {
+        pub fn as_str(&self) -> &str {
+            // SAFETY: `self.inner` is only initialised via `String`, which upholds the validity invariant of `str`.
+            unsafe { str::from_utf8_unchecked(self.inner.to_bytes()) }
+        }
+    }
+
+    impl core::ops::Deref for ThreadNameString {
+        type Target = CStr;
+        fn deref(&self) -> &CStr {
+            &self.inner
+        }
+    }
+
+    impl From<String> for ThreadNameString {
+        fn from(s: String) -> Self {
+            Self {
+                inner: CString::new(s).expect("thread name may not contain interior null bytes"),
+            }
+        }
+    }
+}
+pub(crate) use thread_name_string::ThreadNameString;
+
+static MAIN_THREAD_INFO: SyncUnsafeCell<(MaybeUninit<ThreadId>, MaybeUninit<Parker>)> =
+    SyncUnsafeCell::new((MaybeUninit::uninit(), MaybeUninit::uninit()));
+
+/// The internal representation of a `Thread` that is not the main thread.
+struct OtherInner {
+    name: Option<ThreadNameString>,
     id: ThreadId,
     parker: Parker,
+}
+
+/// The internal representation of a `Thread` handle.
+#[derive(Clone)]
+enum Inner {
+    /// Represents the main thread. May only be constructed by Thread::new_main.
+    Main(&'static (ThreadId, Parker)),
+    /// Represents any other thread.
+    Other(Pin<Arc<OtherInner>>),
+}
+
+impl Inner {
+    fn id(&self) -> ThreadId {
+        match self {
+            Self::Main((thread_id, _)) => *thread_id,
+            Self::Other(other) => other.id,
+        }
+    }
+
+    fn cname(&self) -> Option<&CStr> {
+        match self {
+            Self::Main(_) => Some(c"main"),
+            Self::Other(other) => other.name.as_deref(),
+        }
+    }
+
+    fn name(&self) -> Option<&str> {
+        match self {
+            Self::Main(_) => Some("main"),
+            Self::Other(other) => other.name.as_ref().map(ThreadNameString::as_str),
+        }
+    }
+
+    fn into_raw(self) -> *const () {
+        match self {
+            // Just return the pointer to `MAIN_THREAD_INFO`.
+            Self::Main(ptr) => crate::ptr::from_ref(ptr).cast(),
+            Self::Other(arc) => {
+                // Safety: We only expose an opaque pointer, which maintains the `Pin` invariant.
+                let inner = unsafe { Pin::into_inner_unchecked(arc) };
+                Arc::into_raw(inner) as *const ()
+            }
+        }
+    }
+
+    /// # Safety
+    ///
+    /// See [`Thread::from_raw`].
+    unsafe fn from_raw(ptr: *const ()) -> Self {
+        // If the pointer is to `MAIN_THREAD_INFO`, we know it is the `Main` variant.
+        if crate::ptr::eq(ptr.cast(), &MAIN_THREAD_INFO) {
+            Self::Main(unsafe { &*ptr.cast() })
+        } else {
+            // Safety: Upheld by caller
+            Self::Other(unsafe { Pin::new_unchecked(Arc::from_raw(ptr as *const OtherInner)) })
+        }
+    }
+
+    fn parker(&self) -> Pin<&Parker> {
+        match self {
+            Self::Main((_, parker_ref)) => Pin::static_ref(parker_ref),
+            Self::Other(inner) => unsafe {
+                Pin::map_unchecked(inner.as_ref(), |inner| &inner.parker)
+            },
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -1062,20 +1385,74 @@ struct Inner {
 /// should instead use a function like `spawn` to create new threads, see the
 /// docs of [`Builder`] and [`spawn`] for more details.
 ///
-/// [`thread::current`]: current
-pub struct Thread {
-    inner: Arc<Inner>,
-}
+/// [`thread::current`]: current::current
+pub struct Thread(Inner);
 
 impl Thread {
-    // Used only internally to construct a thread object without spawning
-    // Panics if the name contains nuls.
-    pub(crate) fn new(name: Option<String>) -> Thread {
-        let cname =
-            name.map(|n| CString::new(n).expect("thread name may not contain interior null bytes"));
-        Thread {
-            inner: Arc::new(Inner { name: cname, id: ThreadId::new(), parker: Parker::new() }),
-        }
+    /// Used only internally to construct a thread object without spawning.
+    pub(crate) fn new(id: ThreadId, name: String) -> Thread {
+        Self::new_inner(id, Some(ThreadNameString::from(name)))
+    }
+
+    pub(crate) fn new_unnamed(id: ThreadId) -> Thread {
+        Self::new_inner(id, None)
+    }
+
+    /// Used in runtime to construct main thread
+    ///
+    /// # Safety
+    ///
+    /// This must only ever be called once, and must be called on the main thread.
+    pub(crate) unsafe fn new_main(thread_id: ThreadId) -> Thread {
+        // Safety: As this is only called once and on the main thread, nothing else is accessing MAIN_THREAD_INFO
+        // as the only other read occurs in `main_thread_info` *after* the main thread has been constructed,
+        // and this function is the only one that constructs the main thread.
+        //
+        // Pre-main thread spawning cannot hit this either, as the caller promises that this is only called on the main thread.
+        let main_thread_info = unsafe { &mut *MAIN_THREAD_INFO.get() };
+
+        unsafe { Parker::new_in_place((&raw mut main_thread_info.1).cast()) };
+        main_thread_info.0.write(thread_id);
+
+        // Store a `'static` ref to the initialised ThreadId and Parker,
+        // to avoid having to repeatedly prove initialisation.
+        Self(Inner::Main(unsafe { &*MAIN_THREAD_INFO.get().cast() }))
+    }
+
+    fn new_inner(id: ThreadId, name: Option<ThreadNameString>) -> Thread {
+        // We have to use `unsafe` here to construct the `Parker` in-place,
+        // which is required for the UNIX implementation.
+        //
+        // SAFETY: We pin the Arc immediately after creation, so its address never
+        // changes.
+        let inner = unsafe {
+            let mut arc = Arc::<OtherInner>::new_uninit();
+            let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
+            (&raw mut (*ptr).name).write(name);
+            (&raw mut (*ptr).id).write(id);
+            Parker::new_in_place(&raw mut (*ptr).parker);
+            Pin::new_unchecked(arc.assume_init())
+        };
+
+        Self(Inner::Other(inner))
+    }
+
+    /// Like the public [`park`], but callable on any handle. This is used to
+    /// allow parking in TLS destructors.
+    ///
+    /// # Safety
+    /// May only be called from the thread to which this handle belongs.
+    pub(crate) unsafe fn park(&self) {
+        unsafe { self.0.parker().park() }
+    }
+
+    /// Like the public [`park_timeout`], but callable on any handle. This is
+    /// used to allow parking in TLS destructors.
+    ///
+    /// # Safety
+    /// May only be called from the thread to which this handle belongs.
+    pub(crate) unsafe fn park_timeout(&self, dur: Duration) {
+        unsafe { self.0.parker().park_timeout(dur) }
     }
 
     /// Atomically makes the handle's token available if it is not already.
@@ -1111,7 +1488,7 @@ impl Thread {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn unpark(&self) {
-        self.inner.parker.unpark();
+        self.0.parker().unpark();
     }
 
     /// Gets the thread's unique identifier.
@@ -1129,8 +1506,9 @@ impl Thread {
     /// assert!(thread::current().id() != other_thread_id);
     /// ```
     #[stable(feature = "thread_id", since = "1.19.0")]
+    #[must_use]
     pub fn id(&self) -> ThreadId {
-        self.inner.id
+        self.0.id()
     }
 
     /// Gets the thread's name.
@@ -1171,12 +1549,59 @@ impl Thread {
     ///
     /// [naming-threads]: ./index.html#naming-threads
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn name(&self) -> Option<&str> {
-        self.cname().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) })
+        self.0.name()
     }
 
     fn cname(&self) -> Option<&CStr> {
-        self.inner.name.as_deref()
+        self.0.cname()
+    }
+
+    /// Consumes the `Thread`, returning a raw pointer.
+    ///
+    /// To avoid a memory leak the pointer must be converted
+    /// back into a `Thread` using [`Thread::from_raw`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(thread_raw)]
+    ///
+    /// use std::thread::{self, Thread};
+    ///
+    /// let thread = thread::current();
+    /// let id = thread.id();
+    /// let ptr = Thread::into_raw(thread);
+    /// unsafe {
+    ///     assert_eq!(Thread::from_raw(ptr).id(), id);
+    /// }
+    /// ```
+    #[unstable(feature = "thread_raw", issue = "97523")]
+    pub fn into_raw(self) -> *const () {
+        self.0.into_raw()
+    }
+
+    /// Constructs a `Thread` from a raw pointer.
+    ///
+    /// The raw pointer must have been previously returned
+    /// by a call to [`Thread::into_raw`].
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because improper use may lead
+    /// to memory unsafety, even if the returned `Thread` is never
+    /// accessed.
+    ///
+    /// Creating a `Thread` from a pointer other than one returned
+    /// from [`Thread::into_raw`] is **undefined behavior**.
+    ///
+    /// Calling this function twice on the same raw pointer can lead
+    /// to a double-free if both `Thread` instances are dropped.
+    #[unstable(feature = "thread_raw", issue = "97523")]
+    pub unsafe fn from_raw(ptr: *const ()) -> Thread {
+        // Safety: Upheld by caller.
+        unsafe { Thread(Inner::from_raw(ptr)) }
     }
 }
 
@@ -1239,41 +1664,75 @@ impl fmt::Debug for Thread {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 
-// This packet is used to communicate the return value between the child thread
-// and the parent thread. Memory is shared through the `Arc` within and there's
-// no need for a mutex here because synchronization happens with `join()` (the
-// parent thread never reads this packet until the child has exited).
+// This packet is used to communicate the return value between the spawned
+// thread and the rest of the program. It is shared through an `Arc` and
+// there's no need for a mutex here because synchronization happens with `join()`
+// (the caller will never read this packet until the thread has exited).
 //
-// This packet itself is then stored into a `JoinInner` which in turns is placed
-// in `JoinHandle` and `JoinGuard`. Due to the usage of `UnsafeCell` we need to
-// manually worry about impls like Send and Sync. The type `T` should
-// already always be Send (otherwise the thread could not have been created) and
-// this type is inherently Sync because no methods take &self. Regardless,
-// however, we add inheriting impls for Send/Sync to this type to ensure it's
-// Send/Sync and that future modifications will still appropriately classify it.
-struct Packet<T>(Arc<UnsafeCell<Option<Result<T>>>>);
-
-unsafe impl<T: Send> Send for Packet<T> {}
-unsafe impl<T: Sync> Sync for Packet<T> {}
-
-/// Inner representation for JoinHandle
-struct JoinInner<T> {
-    native: Option<imp::Thread>,
-    thread: Thread,
-    packet: Packet<T>,
+// An Arc to the packet is stored into a `JoinInner` which in turns is placed
+// in `JoinHandle`.
+struct Packet<'scope, T> {
+    scope: Option<Arc<scoped::ScopeData>>,
+    result: UnsafeCell<Option<Result<T>>>,
+    _marker: PhantomData<Option<&'scope scoped::ScopeData>>,
 }
 
-impl<T> JoinInner<T> {
-    fn join(&mut self) -> Result<T> {
-        self.native.take().unwrap().join();
-        unsafe { (*self.packet.0.get()).take().unwrap() }
+// Due to the usage of `UnsafeCell` we need to manually implement Sync.
+// The type `T` should already always be Send (otherwise the thread could not
+// have been created) and the Packet is Sync because all access to the
+// `UnsafeCell` synchronized (by the `join()` boundary), and `ScopeData` is Sync.
+unsafe impl<'scope, T: Send> Sync for Packet<'scope, T> {}
+
+impl<'scope, T> Drop for Packet<'scope, T> {
+    fn drop(&mut self) {
+        // If this packet was for a thread that ran in a scope, the thread
+        // panicked, and nobody consumed the panic payload, we make sure
+        // the scope function will panic.
+        let unhandled_panic = matches!(self.result.get_mut(), Some(Err(_)));
+        // Drop the result without causing unwinding.
+        // This is only relevant for threads that aren't join()ed, as
+        // join() will take the `result` and set it to None, such that
+        // there is nothing left to drop here.
+        // If this panics, we should handle that, because we're outside the
+        // outermost `catch_unwind` of our thread.
+        // We just abort in that case, since there's nothing else we can do.
+        // (And even if we tried to handle it somehow, we'd also need to handle
+        // the case where the panic payload we get out of it also panics on
+        // drop, and so on. See issue #86027.)
+        if let Err(_) = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            *self.result.get_mut() = None;
+        })) {
+            rtabort!("thread result panicked on drop");
+        }
+        // Book-keeping so the scope knows when it's done.
+        if let Some(scope) = &self.scope {
+            // Now that there will be no more user code running on this thread
+            // that can use 'scope, mark the thread as 'finished'.
+            // It's important we only do this after the `result` has been dropped,
+            // since dropping it might still use things it borrowed from 'scope.
+            scope.decrement_num_running_threads(unhandled_panic);
+        }
+    }
+}
+
+/// Inner representation for JoinHandle
+struct JoinInner<'scope, T> {
+    native: imp::Thread,
+    thread: Thread,
+    packet: Arc<Packet<'scope, T>>,
+}
+
+impl<'scope, T> JoinInner<'scope, T> {
+    fn join(mut self) -> Result<T> {
+        self.native.join();
+        Arc::get_mut(&mut self.packet).unwrap().result.get_mut().take().unwrap()
     }
 }
 
 /// An owned permission to join on a thread (block on its termination).
 ///
 /// A `JoinHandle` *detaches* the associated thread when it is dropped, which
-/// means that there is no longer any handle to thread and no way to `join`
+/// means that there is no longer any handle to the thread and no way to `join`
 /// on it.
 ///
 /// Due to platform restrictions, it is not possible to [`Clone`] this
@@ -1306,7 +1765,7 @@ impl<T> JoinInner<T> {
 /// }).unwrap();
 /// ```
 ///
-/// Child being detached and outliving its parent:
+/// A thread being detached and outliving the thread that spawned it:
 ///
 /// ```no_run
 /// use std::thread;
@@ -1333,7 +1792,8 @@ impl<T> JoinInner<T> {
 /// [`thread::Builder::spawn`]: Builder::spawn
 /// [`thread::spawn`]: spawn
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct JoinHandle<T>(JoinInner<T>);
+#[cfg_attr(target_os = "teeos", must_use)]
+pub struct JoinHandle<T>(JoinInner<'static, T>);
 
 #[stable(feature = "joinhandle_impl_send_sync", since = "1.29.0")]
 unsafe impl<T> Send for JoinHandle<T> {}
@@ -1358,19 +1818,23 @@ impl<T> JoinHandle<T> {
     /// println!("thread id: {:?}", thread.id());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn thread(&self) -> &Thread {
         &self.0.thread
     }
 
     /// Waits for the associated thread to finish.
     ///
+    /// This function will return immediately if the associated thread has already finished.
+    ///
     /// In terms of [atomic memory orderings],  the completion of the associated
     /// thread synchronizes with this function returning. In other words, all
-    /// operations performed by that thread are ordered before all
+    /// operations performed by that thread [happen
+    /// before](https://doc.rust-lang.org/nomicon/atomics.html#data-accesses) all
     /// operations that happen after `join` returns.
     ///
-    /// If the child thread panics, [`Err`] is returned with the parameter given
-    /// to [`panic!`].
+    /// If the associated thread panics, [`Err`] is returned with the parameter given
+    /// to [`panic!`] (though see the Notes below).
     ///
     /// [`Err`]: crate::result::Result::Err
     /// [atomic memory orderings]: crate::sync::atomic
@@ -1392,21 +1856,48 @@ impl<T> JoinHandle<T> {
     /// }).unwrap();
     /// join_handle.join().expect("Couldn't join on the associated thread");
     /// ```
+    ///
+    /// # Notes
+    ///
+    /// If a "foreign" unwinding operation (e.g. an exception thrown from C++
+    /// code, or a `panic!` in Rust code compiled or linked with a different
+    /// runtime) unwinds all the way to the thread root, the process may be
+    /// aborted; see the Notes on [`thread::spawn`]. If the process is not
+    /// aborted, this function will return a `Result::Err` containing an opaque
+    /// type.
+    ///
+    /// [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
+    /// [`thread::spawn`]: spawn
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn join(mut self) -> Result<T> {
+    pub fn join(self) -> Result<T> {
         self.0.join()
+    }
+
+    /// Checks if the associated thread has finished running its main function.
+    ///
+    /// `is_finished` supports implementing a non-blocking join operation, by checking
+    /// `is_finished`, and calling `join` if it returns `true`. This function does not block. To
+    /// block while waiting on the thread to finish, use [`join`][Self::join].
+    ///
+    /// This might return `true` for a brief moment after the thread's main
+    /// function has returned, but before the thread itself has stopped running.
+    /// However, once this returns `true`, [`join`][Self::join] can be expected
+    /// to return quickly, without blocking for any significant amount of time.
+    #[stable(feature = "thread_is_running", since = "1.61.0")]
+    pub fn is_finished(&self) -> bool {
+        Arc::strong_count(&self.0.packet) == 1
     }
 }
 
 impl<T> AsInner<imp::Thread> for JoinHandle<T> {
     fn as_inner(&self) -> &imp::Thread {
-        self.0.native.as_ref().unwrap()
+        &self.0.native
     }
 }
 
 impl<T> IntoInner<imp::Thread> for JoinHandle<T> {
     fn into_inner(self) -> imp::Thread {
-        self.0.native.unwrap()
+        self.0.native
     }
 }
 
@@ -1421,4 +1912,93 @@ fn _assert_sync_and_send() {
     fn _assert_both<T: Send + Sync>() {}
     _assert_both::<JoinHandle<()>>();
     _assert_both::<Thread>();
+}
+
+/// Returns an estimate of the default amount of parallelism a program should use.
+///
+/// Parallelism is a resource. A given machine provides a certain capacity for
+/// parallelism, i.e., a bound on the number of computations it can perform
+/// simultaneously. This number often corresponds to the amount of CPUs a
+/// computer has, but it may diverge in various cases.
+///
+/// Host environments such as VMs or container orchestrators may want to
+/// restrict the amount of parallelism made available to programs in them. This
+/// is often done to limit the potential impact of (unintentionally)
+/// resource-intensive programs on other programs running on the same machine.
+///
+/// # Limitations
+///
+/// The purpose of this API is to provide an easy and portable way to query
+/// the default amount of parallelism the program should use. Among other things it
+/// does not expose information on NUMA regions, does not account for
+/// differences in (co)processor capabilities or current system load,
+/// and will not modify the program's global state in order to more accurately
+/// query the amount of available parallelism.
+///
+/// Where both fixed steady-state and burst limits are available the steady-state
+/// capacity will be used to ensure more predictable latencies.
+///
+/// Resource limits can be changed during the runtime of a program, therefore the value is
+/// not cached and instead recomputed every time this function is called. It should not be
+/// called from hot code.
+///
+/// The value returned by this function should be considered a simplified
+/// approximation of the actual amount of parallelism available at any given
+/// time. To get a more detailed or precise overview of the amount of
+/// parallelism available to the program, you may wish to use
+/// platform-specific APIs as well. The following platform limitations currently
+/// apply to `available_parallelism`:
+///
+/// On Windows:
+/// - It may undercount the amount of parallelism available on systems with more
+///   than 64 logical CPUs. However, programs typically need specific support to
+///   take advantage of more than 64 logical CPUs, and in the absence of such
+///   support, the number returned by this function accurately reflects the
+///   number of logical CPUs the program can use by default.
+/// - It may overcount the amount of parallelism available on systems limited by
+///   process-wide affinity masks, or job object limitations.
+///
+/// On Linux:
+/// - It may overcount the amount of parallelism available when limited by a
+///   process-wide affinity mask or cgroup quotas and `sched_getaffinity()` or cgroup fs can't be
+///   queried, e.g. due to sandboxing.
+/// - It may undercount the amount of parallelism if the current thread's affinity mask
+///   does not reflect the process' cpuset, e.g. due to pinned threads.
+/// - If the process is in a cgroup v1 cpu controller, this may need to
+///   scan mountpoints to find the corresponding cgroup v1 controller,
+///   which may take time on systems with large numbers of mountpoints.
+///   (This does not apply to cgroup v2, or to processes not in a
+///   cgroup.)
+///
+/// On all targets:
+/// - It may overcount the amount of parallelism available when running in a VM
+/// with CPU usage limits (e.g. an overcommitted host).
+///
+/// # Errors
+///
+/// This function will, but is not limited to, return errors in the following
+/// cases:
+///
+/// - If the amount of parallelism is not known for the target platform.
+/// - If the program lacks permission to query the amount of parallelism made
+///   available to it.
+///
+/// # Examples
+///
+/// ```
+/// # #![allow(dead_code)]
+/// use std::{io, thread};
+///
+/// fn main() -> io::Result<()> {
+///     let count = thread::available_parallelism()?.get();
+///     assert!(count >= 1_usize);
+///     Ok(())
+/// }
+/// ```
+#[doc(alias = "available_concurrency")] // Alias for a previous name we gave this API on unstable.
+#[doc(alias = "hardware_concurrency")] // Alias for C++ `std::thread::hardware_concurrency`.
+#[doc(alias = "num_cpus")] // Alias for a popular ecosystem crate which provides similar functionality.
+#[stable(feature = "available_parallelism", since = "1.59.0")]
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
+    imp::available_parallelism()
 }

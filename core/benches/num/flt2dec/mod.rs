@@ -3,16 +3,15 @@ mod strategy {
     mod grisu;
 }
 
-use core::num::flt2dec::MAX_SIG_DIGITS;
-use core::num::flt2dec::{decode, DecodableFloat, Decoded, FullDecoded};
+use core::num::flt2dec::{DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, decode};
 use std::io::Write;
-use std::vec::Vec;
-use test::Bencher;
+
+use test::{Bencher, black_box};
 
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
         FullDecoded::Finite(decoded) => decoded,
-        full_decoded => panic!("expected finite, got {:?} instead", full_decoded),
+        full_decoded => panic!("expected finite, got {full_decoded:?} instead"),
     }
 }
 
@@ -22,7 +21,7 @@ fn bench_small_shortest(b: &mut Bencher) {
 
     b.iter(|| {
         buf.clear();
-        write!(&mut buf, "{}", 3.1415926f64).unwrap()
+        write!(black_box(&mut buf), "{}", black_box(3.1415926f64)).unwrap()
     });
 }
 
@@ -32,6 +31,6 @@ fn bench_big_shortest(b: &mut Bencher) {
 
     b.iter(|| {
         buf.clear();
-        write!(&mut buf, "{}", f64::MAX).unwrap()
+        write!(black_box(&mut buf), "{}", black_box(f64::MAX)).unwrap()
     });
 }

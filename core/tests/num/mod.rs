@@ -1,11 +1,6 @@
-use core::cmp::PartialEq;
-use core::convert::{TryFrom, TryInto};
 use core::fmt::Debug;
-use core::marker::Copy;
-use core::num::{IntErrorKind, ParseIntError, TryFromIntError};
+use core::num::{IntErrorKind, ParseIntError, TryFromIntError, can_not_overflow};
 use core::ops::{Add, Div, Mul, Rem, Sub};
-use core::option::Option;
-use core::option::Option::None;
 use core::str::FromStr;
 
 #[macro_use]
@@ -27,11 +22,17 @@ mod u64;
 mod u8;
 
 mod bignum;
+
+mod const_from;
 mod dec2flt;
 mod flt2dec;
+mod int_log;
+mod int_sqrt;
+mod midpoint;
 mod ops;
 mod wrapping;
 
+mod float_iter_sum_identity;
 mod ieee754;
 mod nan;
 
@@ -118,6 +119,75 @@ fn test_int_from_str_overflow() {
 }
 
 #[test]
+fn test_can_not_overflow() {
+    fn can_overflow<T>(radix: u32, input: &str) -> bool
+    where
+        T: std::convert::TryFrom<i8>,
+    {
+        !can_not_overflow::<T>(radix, T::try_from(-1_i8).is_ok(), input.as_bytes())
+    }
+
+    // Positive tests:
+    assert!(!can_overflow::<i8>(16, "F"));
+    assert!(!can_overflow::<u8>(16, "FF"));
+
+    assert!(!can_overflow::<i8>(10, "9"));
+    assert!(!can_overflow::<u8>(10, "99"));
+
+    // Negative tests:
+
+    // Not currently in std lib (issue: #27728)
+    fn format_radix<T>(mut x: T, radix: T) -> String
+    where
+        T: std::ops::Rem<Output = T>,
+        T: std::ops::Div<Output = T>,
+        T: std::cmp::PartialEq,
+        T: std::default::Default,
+        T: Copy,
+        T: Default,
+        u32: TryFrom<T>,
+    {
+        let mut result = vec![];
+
+        loop {
+            let m = x % radix;
+            x = x / radix;
+            result.push(
+                std::char::from_digit(m.try_into().ok().unwrap(), radix.try_into().ok().unwrap())
+                    .unwrap(),
+            );
+            if x == T::default() {
+                break;
+            }
+        }
+        result.into_iter().rev().collect()
+    }
+
+    macro_rules! check {
+        ($($t:ty)*) => ($(
+        for base in 2..=36 {
+            let num = (<$t>::MAX as u128) + 1;
+
+           // Calculate the string length for the smallest overflowing number:
+           let max_len_string = format_radix(num, base as u128);
+           // Ensure that string length is deemed to potentially overflow:
+           assert!(can_overflow::<$t>(base, &max_len_string));
+        }
+        )*)
+    }
+
+    check! { i8 i16 i32 i64 i128 isize usize u8 u16 u32 u64 }
+
+    // Check u128 separately:
+    for base in 2..=36 {
+        let num = <u128>::MAX;
+        let max_len_string = format_radix(num, base as u128);
+        // base 16 fits perfectly for u128 and won't overflow:
+        assert_eq!(can_overflow::<u128>(base, &max_len_string), base != 16);
+    }
+}
+
+#[test]
 fn test_leading_plus() {
     test_parse::<u8>("+127", Ok(127));
     test_parse::<i64>("+9223372036854775807", Ok(9223372036854775807));
@@ -146,6 +216,16 @@ fn test_infallible_try_from_int_error() {
 
     assert!(func(0).is_ok());
 }
+
+const _TEST_CONST_PARSE: () = {
+    let Ok(-0x8000) = i16::from_str_radix("-8000", 16) else { panic!() };
+    let Ok(12345) = u64::from_str_radix("12345", 10) else { panic!() };
+    if let Err(e) = i8::from_str_radix("+", 10) {
+        let IntErrorKind::InvalidDigit = e.kind() else { panic!() };
+    } else {
+        panic!()
+    }
+};
 
 macro_rules! test_impl_from {
     ($fn_name:ident, bool, $target: ty) => {
@@ -652,7 +732,7 @@ assume_usize_width! {
 }
 
 macro_rules! test_float {
-    ($modname: ident, $fty: ty, $inf: expr, $neginf: expr, $nan: expr) => {
+    ($modname: ident, $fty: ty, $inf: expr, $neginf: expr, $nan: expr, $min: expr, $max: expr, $min_pos: expr, $max_exp:expr) => {
         mod $modname {
             #[test]
             fn min() {
@@ -712,6 +792,120 @@ macro_rules! test_float {
                 assert!(($nan as $fty).max($nan).is_nan());
             }
             #[test]
+            fn minimum() {
+                assert_eq!((0.0 as $fty).minimum(0.0), 0.0);
+                assert!((0.0 as $fty).minimum(0.0).is_sign_positive());
+                assert_eq!((-0.0 as $fty).minimum(0.0), -0.0);
+                assert!((-0.0 as $fty).minimum(0.0).is_sign_negative());
+                assert_eq!((-0.0 as $fty).minimum(-0.0), -0.0);
+                assert!((-0.0 as $fty).minimum(-0.0).is_sign_negative());
+                assert_eq!((9.0 as $fty).minimum(9.0), 9.0);
+                assert_eq!((-9.0 as $fty).minimum(0.0), -9.0);
+                assert_eq!((0.0 as $fty).minimum(9.0), 0.0);
+                assert!((0.0 as $fty).minimum(9.0).is_sign_positive());
+                assert_eq!((-0.0 as $fty).minimum(9.0), -0.0);
+                assert!((-0.0 as $fty).minimum(9.0).is_sign_negative());
+                assert_eq!((-0.0 as $fty).minimum(-9.0), -9.0);
+                assert_eq!(($inf as $fty).minimum(9.0), 9.0);
+                assert_eq!((9.0 as $fty).minimum($inf), 9.0);
+                assert_eq!(($inf as $fty).minimum(-9.0), -9.0);
+                assert_eq!((-9.0 as $fty).minimum($inf), -9.0);
+                assert_eq!(($neginf as $fty).minimum(9.0), $neginf);
+                assert_eq!((9.0 as $fty).minimum($neginf), $neginf);
+                assert_eq!(($neginf as $fty).minimum(-9.0), $neginf);
+                assert_eq!((-9.0 as $fty).minimum($neginf), $neginf);
+                assert!(($nan as $fty).minimum(9.0).is_nan());
+                assert!(($nan as $fty).minimum(-9.0).is_nan());
+                assert!((9.0 as $fty).minimum($nan).is_nan());
+                assert!((-9.0 as $fty).minimum($nan).is_nan());
+                assert!(($nan as $fty).minimum($nan).is_nan());
+            }
+            #[test]
+            fn maximum() {
+                assert_eq!((0.0 as $fty).maximum(0.0), 0.0);
+                assert!((0.0 as $fty).maximum(0.0).is_sign_positive());
+                assert_eq!((-0.0 as $fty).maximum(0.0), 0.0);
+                assert!((-0.0 as $fty).maximum(0.0).is_sign_positive());
+                assert_eq!((-0.0 as $fty).maximum(-0.0), -0.0);
+                assert!((-0.0 as $fty).maximum(-0.0).is_sign_negative());
+                assert_eq!((9.0 as $fty).maximum(9.0), 9.0);
+                assert_eq!((-9.0 as $fty).maximum(0.0), 0.0);
+                assert!((-9.0 as $fty).maximum(0.0).is_sign_positive());
+                assert_eq!((-9.0 as $fty).maximum(-0.0), -0.0);
+                assert!((-9.0 as $fty).maximum(-0.0).is_sign_negative());
+                assert_eq!((0.0 as $fty).maximum(9.0), 9.0);
+                assert_eq!((0.0 as $fty).maximum(-9.0), 0.0);
+                assert!((0.0 as $fty).maximum(-9.0).is_sign_positive());
+                assert_eq!((-0.0 as $fty).maximum(-9.0), -0.0);
+                assert!((-0.0 as $fty).maximum(-9.0).is_sign_negative());
+                assert_eq!(($inf as $fty).maximum(9.0), $inf);
+                assert_eq!((9.0 as $fty).maximum($inf), $inf);
+                assert_eq!(($inf as $fty).maximum(-9.0), $inf);
+                assert_eq!((-9.0 as $fty).maximum($inf), $inf);
+                assert_eq!(($neginf as $fty).maximum(9.0), 9.0);
+                assert_eq!((9.0 as $fty).maximum($neginf), 9.0);
+                assert_eq!(($neginf as $fty).maximum(-9.0), -9.0);
+                assert_eq!((-9.0 as $fty).maximum($neginf), -9.0);
+                assert!(($nan as $fty).maximum(9.0).is_nan());
+                assert!(($nan as $fty).maximum(-9.0).is_nan());
+                assert!((9.0 as $fty).maximum($nan).is_nan());
+                assert!((-9.0 as $fty).maximum($nan).is_nan());
+                assert!(($nan as $fty).maximum($nan).is_nan());
+            }
+            #[test]
+            fn midpoint() {
+                assert_eq!((0.5 as $fty).midpoint(0.5), 0.5);
+                assert_eq!((0.5 as $fty).midpoint(2.5), 1.5);
+                assert_eq!((3.0 as $fty).midpoint(4.0), 3.5);
+                assert_eq!((-3.0 as $fty).midpoint(4.0), 0.5);
+                assert_eq!((3.0 as $fty).midpoint(-4.0), -0.5);
+                assert_eq!((-3.0 as $fty).midpoint(-4.0), -3.5);
+                assert_eq!((0.0 as $fty).midpoint(0.0), 0.0);
+                assert_eq!((-0.0 as $fty).midpoint(-0.0), -0.0);
+                assert_eq!((-5.0 as $fty).midpoint(5.0), 0.0);
+                assert_eq!(($max as $fty).midpoint($min), 0.0);
+                assert_eq!(($min as $fty).midpoint($max), -0.0);
+                assert_eq!(($max as $fty).midpoint($min_pos), $max / 2.);
+                assert_eq!((-$max as $fty).midpoint($min_pos), -$max / 2.);
+                assert_eq!(($max as $fty).midpoint(-$min_pos), $max / 2.);
+                assert_eq!((-$max as $fty).midpoint(-$min_pos), -$max / 2.);
+                assert_eq!(($min_pos as $fty).midpoint($max), $max / 2.);
+                assert_eq!(($min_pos as $fty).midpoint(-$max), -$max / 2.);
+                assert_eq!((-$min_pos as $fty).midpoint($max), $max / 2.);
+                assert_eq!((-$min_pos as $fty).midpoint(-$max), -$max / 2.);
+                assert_eq!(($max as $fty).midpoint($max), $max);
+                assert_eq!(($min_pos as $fty).midpoint($min_pos), $min_pos);
+                assert_eq!((-$min_pos as $fty).midpoint(-$min_pos), -$min_pos);
+                assert_eq!(($max as $fty).midpoint(5.0), $max / 2.0 + 2.5);
+                assert_eq!(($max as $fty).midpoint(-5.0), $max / 2.0 - 2.5);
+                assert_eq!(($inf as $fty).midpoint($inf), $inf);
+                assert_eq!(($neginf as $fty).midpoint($neginf), $neginf);
+                assert!(($nan as $fty).midpoint(1.0).is_nan());
+                assert!((1.0 as $fty).midpoint($nan).is_nan());
+                assert!(($nan as $fty).midpoint($nan).is_nan());
+
+                // test if large differences in magnitude are still correctly computed.
+                // NOTE: that because of how small x and y are, x + y can never overflow
+                // so (x + y) / 2.0 is always correct
+                // in particular, `2.pow(i)` will  never be at the max exponent, so it could
+                // be safely doubled, while j is significantly smaller.
+                for i in $max_exp.saturating_sub(64)..$max_exp {
+                    for j in 0..64u8 {
+                        let large = <$fty>::from(2.0f32).powi(i);
+                        // a much smaller number, such that there is no chance of overflow to test
+                        // potential double rounding in midpoint's implementation.
+                        let small = <$fty>::from(2.0f32).powi($max_exp - 1)
+                            * <$fty>::EPSILON
+                            * <$fty>::from(j);
+
+                        let naive = (large + small) / 2.0;
+                        let midpoint = large.midpoint(small);
+
+                        assert_eq!(naive, midpoint);
+                    }
+                }
+            }
+            #[test]
             fn rem_euclid() {
                 let a: $fty = 42.0;
                 assert!($inf.rem_euclid(a).is_nan());
@@ -734,5 +928,25 @@ macro_rules! test_float {
     };
 }
 
-test_float!(f32, f32, f32::INFINITY, f32::NEG_INFINITY, f32::NAN);
-test_float!(f64, f64, f64::INFINITY, f64::NEG_INFINITY, f64::NAN);
+test_float!(
+    f32,
+    f32,
+    f32::INFINITY,
+    f32::NEG_INFINITY,
+    f32::NAN,
+    f32::MIN,
+    f32::MAX,
+    f32::MIN_POSITIVE,
+    f32::MAX_EXP
+);
+test_float!(
+    f64,
+    f64,
+    f64::INFINITY,
+    f64::NEG_INFINITY,
+    f64::NAN,
+    f64::MIN,
+    f64::MAX,
+    f64::MIN_POSITIVE,
+    f64::MAX_EXP
+);

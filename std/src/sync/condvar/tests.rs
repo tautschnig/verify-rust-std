@@ -12,7 +12,7 @@ fn smoke() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn notify_one() {
     let m = Arc::new(Mutex::new(()));
     let m2 = m.clone();
@@ -29,7 +29,7 @@ fn notify_one() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn notify_all() {
     const N: usize = 10;
 
@@ -66,7 +66,7 @@ fn notify_all() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn wait_while() {
     let pair = Arc::new((Mutex::new(false), Condvar::new()));
     let pair2 = pair.clone();
@@ -87,7 +87,7 @@ fn wait_while() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // condvar wait not supported
 fn wait_timeout_wait() {
     let m = Arc::new(Mutex::new(()));
     let c = Arc::new(Condvar::new());
@@ -106,7 +106,7 @@ fn wait_timeout_wait() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // condvar wait not supported
 fn wait_timeout_while_wait() {
     let m = Arc::new(Mutex::new(()));
     let c = Arc::new(Condvar::new());
@@ -118,7 +118,7 @@ fn wait_timeout_while_wait() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // condvar wait not supported
 fn wait_timeout_while_instant_satisfy() {
     let m = Arc::new(Mutex::new(()));
     let c = Arc::new(Condvar::new());
@@ -130,7 +130,7 @@ fn wait_timeout_while_instant_satisfy() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn wait_timeout_while_wake() {
     let pair = Arc::new((Mutex::new(false), Condvar::new()));
     let pair_copy = pair.clone();
@@ -153,7 +153,7 @@ fn wait_timeout_while_wake() {
 }
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn wait_timeout_wake() {
     let m = Arc::new(Mutex::new(()));
     let c = Arc::new(Condvar::new());
@@ -170,14 +170,14 @@ fn wait_timeout_wake() {
         let t = thread::spawn(move || {
             let _g = m2.lock().unwrap();
             thread::sleep(Duration::from_millis(1));
-            notified_copy.store(true, Ordering::SeqCst);
+            notified_copy.store(true, Ordering::Relaxed);
             c2.notify_one();
         });
         let (g, timeout_res) = c.wait_timeout(g, Duration::from_millis(u64::MAX)).unwrap();
         assert!(!timeout_res.timed_out());
         // spurious wakeups mean this isn't necessarily true
         // so execute test again, if not notified
-        if !notified.load(Ordering::SeqCst) {
+        if !notified.load(Ordering::Relaxed) {
             t.join().unwrap();
             continue;
         }
@@ -187,25 +187,4 @@ fn wait_timeout_wake() {
 
         break;
     }
-}
-
-#[test]
-#[should_panic]
-#[cfg_attr(not(unix), ignore)]
-fn two_mutexes() {
-    let m = Arc::new(Mutex::new(()));
-    let m2 = m.clone();
-    let c = Arc::new(Condvar::new());
-    let c2 = c.clone();
-
-    let mut g = m.lock().unwrap();
-    let _t = thread::spawn(move || {
-        let _g = m2.lock().unwrap();
-        c2.notify_one();
-    });
-    g = c.wait(g).unwrap();
-    drop(g);
-
-    let m = Mutex::new(());
-    let _ = c.wait(m.lock().unwrap()).unwrap();
 }

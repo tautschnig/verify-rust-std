@@ -18,6 +18,49 @@ fn new_overflow() {
 }
 
 #[test]
+#[should_panic]
+fn from_mins_overflow() {
+    let overflow = u64::MAX / 60 + 1;
+    let _ = Duration::from_mins(overflow);
+}
+
+#[test]
+#[should_panic]
+fn from_hours_overflow() {
+    let overflow = u64::MAX / (60 * 60) + 1;
+    let _ = Duration::from_hours(overflow);
+}
+
+#[test]
+#[should_panic]
+fn from_days_overflow() {
+    let overflow = u64::MAX / (24 * 60 * 60) + 1;
+    let _ = Duration::from_days(overflow);
+}
+
+#[test]
+#[should_panic]
+fn from_weeks_overflow() {
+    let overflow = u64::MAX / (7 * 24 * 60 * 60) + 1;
+    let _ = Duration::from_weeks(overflow);
+}
+
+#[test]
+fn constructors() {
+    assert_eq!(Duration::from_weeks(1), Duration::from_secs(7 * 24 * 60 * 60));
+    assert_eq!(Duration::from_weeks(0), Duration::ZERO);
+
+    assert_eq!(Duration::from_days(1), Duration::from_secs(86_400));
+    assert_eq!(Duration::from_days(0), Duration::ZERO);
+
+    assert_eq!(Duration::from_hours(1), Duration::from_secs(3_600));
+    assert_eq!(Duration::from_hours(0), Duration::ZERO);
+
+    assert_eq!(Duration::from_mins(1), Duration::from_secs(60));
+    assert_eq!(Duration::from_mins(0), Duration::ZERO);
+}
+
+#[test]
 fn secs() {
     assert_eq!(Duration::new(0, 0).as_secs(), 0);
     assert_eq!(Duration::new(0, 500_000_005).as_secs(), 0);
@@ -71,6 +114,19 @@ fn nanos() {
     assert_eq!(Duration::from_micros(1_000_001).subsec_nanos(), 1000);
     assert_eq!(Duration::from_nanos(999_999_999).subsec_nanos(), 999_999_999);
     assert_eq!(Duration::from_nanos(1_000_000_001).subsec_nanos(), 1);
+}
+
+#[test]
+fn abs_diff() {
+    assert_eq!(Duration::new(2, 0).abs_diff(Duration::new(1, 0)), Duration::new(1, 0));
+    assert_eq!(Duration::new(1, 0).abs_diff(Duration::new(2, 0)), Duration::new(1, 0));
+    assert_eq!(Duration::new(1, 0).abs_diff(Duration::new(1, 0)), Duration::new(0, 0));
+    assert_eq!(Duration::new(1, 1).abs_diff(Duration::new(0, 2)), Duration::new(0, 999_999_999));
+    assert_eq!(Duration::new(1, 1).abs_diff(Duration::new(2, 1)), Duration::new(1, 0));
+    assert_eq!(Duration::MAX.abs_diff(Duration::MAX), Duration::ZERO);
+    assert_eq!(Duration::ZERO.abs_diff(Duration::ZERO), Duration::ZERO);
+    assert_eq!(Duration::MAX.abs_diff(Duration::ZERO), Duration::MAX);
+    assert_eq!(Duration::ZERO.abs_diff(Duration::MAX), Duration::MAX);
 }
 
 #[test]
@@ -170,7 +226,34 @@ fn saturating_mul() {
 fn div() {
     assert_eq!(Duration::new(0, 1) / 2, Duration::new(0, 0));
     assert_eq!(Duration::new(1, 1) / 3, Duration::new(0, 333_333_333));
+    assert_eq!(Duration::new(1, 1) / 7, Duration::new(0, 142_857_143));
     assert_eq!(Duration::new(99, 999_999_000) / 100, Duration::new(0, 999_999_990));
+}
+
+#[test]
+fn div_duration_f32() {
+    assert_eq!(Duration::ZERO.div_duration_f32(Duration::MAX), 0.0);
+    assert_eq!(Duration::MAX.div_duration_f32(Duration::ZERO), f32::INFINITY);
+    assert_eq!((Duration::SECOND * 2).div_duration_f32(Duration::SECOND), 2.0);
+    assert!(Duration::ZERO.div_duration_f32(Duration::ZERO).is_nan());
+    // These tests demonstrate it doesn't panic with extreme values.
+    // Accuracy of the computed value is not a huge concern, we know floats don't work well
+    // at these extremes.
+    assert!((Duration::MAX).div_duration_f32(Duration::NANOSECOND) > 10.0f32.powf(28.0));
+    assert!((Duration::NANOSECOND).div_duration_f32(Duration::MAX) < 0.1);
+}
+
+#[test]
+fn div_duration_f64() {
+    assert_eq!(Duration::ZERO.div_duration_f64(Duration::MAX), 0.0);
+    assert_eq!(Duration::MAX.div_duration_f64(Duration::ZERO), f64::INFINITY);
+    assert_eq!((Duration::SECOND * 2).div_duration_f64(Duration::SECOND), 2.0);
+    assert!(Duration::ZERO.div_duration_f64(Duration::ZERO).is_nan());
+    // These tests demonstrate it doesn't panic with extreme values.
+    // Accuracy of the computed value is not a huge concern, we know floats don't work well
+    // at these extremes.
+    assert!((Duration::MAX).div_duration_f64(Duration::NANOSECOND) > 10.0f64.powf(28.0));
+    assert!((Duration::NANOSECOND).div_duration_f64(Duration::MAX) < 0.1);
 }
 
 #[test]
@@ -197,9 +280,31 @@ fn correct_sum() {
 #[test]
 fn debug_formatting_extreme_values() {
     assert_eq!(
-        format!("{:?}", Duration::new(18_446_744_073_709_551_615, 123_456_789)),
+        format!("{:?}", Duration::new(u64::MAX, 123_456_789)),
         "18446744073709551615.123456789s"
     );
+    assert_eq!(format!("{:.0?}", Duration::MAX), "18446744073709551616s");
+    assert_eq!(format!("{:.0?}", Duration::new(u64::MAX, 500_000_000)), "18446744073709551616s");
+    assert_eq!(format!("{:.0?}", Duration::new(u64::MAX, 499_999_999)), "18446744073709551615s");
+    assert_eq!(
+        format!("{:.3?}", Duration::new(u64::MAX, 999_500_000)),
+        "18446744073709551616.000s"
+    );
+    assert_eq!(
+        format!("{:.3?}", Duration::new(u64::MAX, 999_499_999)),
+        "18446744073709551615.999s"
+    );
+    assert_eq!(
+        format!("{:.8?}", Duration::new(u64::MAX, 999_999_995)),
+        "18446744073709551616.00000000s"
+    );
+    assert_eq!(
+        format!("{:.8?}", Duration::new(u64::MAX, 999_999_994)),
+        "18446744073709551615.99999999s"
+    );
+    assert_eq!(format!("{:21.0?}", Duration::MAX), "18446744073709551616s");
+    assert_eq!(format!("{:22.0?}", Duration::MAX), "18446744073709551616s ");
+    assert_eq!(format!("{:24.0?}", Duration::MAX), "18446744073709551616s   ");
 }
 
 #[test]
@@ -314,6 +419,34 @@ fn debug_formatting_precision_two() {
 }
 
 #[test]
+fn debug_formatting_padding() {
+    assert_eq!("0ns      ", format!("{:<9?}", Duration::new(0, 0)));
+    assert_eq!("      0ns", format!("{:>9?}", Duration::new(0, 0)));
+    assert_eq!("   0ns   ", format!("{:^9?}", Duration::new(0, 0)));
+    assert_eq!("123ns    ", format!("{:<9.0?}", Duration::new(0, 123)));
+    assert_eq!("    123ns", format!("{:>9.0?}", Duration::new(0, 123)));
+    assert_eq!("  123ns  ", format!("{:^9.0?}", Duration::new(0, 123)));
+    assert_eq!("123.0ns  ", format!("{:<9.1?}", Duration::new(0, 123)));
+    assert_eq!("  123.0ns", format!("{:>9.1?}", Duration::new(0, 123)));
+    assert_eq!(" 123.0ns ", format!("{:^9.1?}", Duration::new(0, 123)));
+    assert_eq!("7.1µs    ", format!("{:<9?}", Duration::new(0, 7_100)));
+    assert_eq!("    7.1µs", format!("{:>9?}", Duration::new(0, 7_100)));
+    assert_eq!("  7.1µs  ", format!("{:^9?}", Duration::new(0, 7_100)));
+    assert_eq!("999.123456ms", format!("{:<9?}", Duration::new(0, 999_123_456)));
+    assert_eq!("999.123456ms", format!("{:>9?}", Duration::new(0, 999_123_456)));
+    assert_eq!("999.123456ms", format!("{:^9?}", Duration::new(0, 999_123_456)));
+    assert_eq!("5s       ", format!("{:<9?}", Duration::new(5, 0)));
+    assert_eq!("       5s", format!("{:>9?}", Duration::new(5, 0)));
+    assert_eq!("   5s    ", format!("{:^9?}", Duration::new(5, 0)));
+    assert_eq!("5.000000000000s", format!("{:<9.12?}", Duration::new(5, 0)));
+    assert_eq!("5.000000000000s", format!("{:>9.12?}", Duration::new(5, 0)));
+    assert_eq!("5.000000000000s", format!("{:^9.12?}", Duration::new(5, 0)));
+
+    // default alignment is left:
+    assert_eq!("5s       ", format!("{:9?}", Duration::new(5, 0)));
+}
+
+#[test]
 fn debug_formatting_precision_high() {
     assert_eq!(format!("{:.5?}", Duration::new(0, 23_678)), "23.67800µs");
 
@@ -349,14 +482,16 @@ fn duration_const() {
     const SECONDS_F32: f32 = Duration::SECOND.as_secs_f32();
     assert_eq!(SECONDS_F32, 1.0);
 
-    const FROM_SECONDS_F32: Duration = Duration::from_secs_f32(1.0);
-    assert_eq!(FROM_SECONDS_F32, Duration::SECOND);
+    // FIXME(#110395)
+    // const FROM_SECONDS_F32: Duration = Duration::from_secs_f32(1.0);
+    // assert_eq!(FROM_SECONDS_F32, Duration::SECOND);
 
     const SECONDS_F64: f64 = Duration::SECOND.as_secs_f64();
     assert_eq!(SECONDS_F64, 1.0);
 
-    const FROM_SECONDS_F64: Duration = Duration::from_secs_f64(1.0);
-    assert_eq!(FROM_SECONDS_F64, Duration::SECOND);
+    // FIXME(#110395)
+    // const FROM_SECONDS_F64: Duration = Duration::from_secs_f64(1.0);
+    // assert_eq!(FROM_SECONDS_F64, Duration::SECOND);
 
     const MILLIS: u128 = Duration::SECOND.as_millis();
     assert_eq!(MILLIS, 1_000);
@@ -387,20 +522,22 @@ fn duration_const() {
     const CHECKED_MUL: Option<Duration> = Duration::SECOND.checked_mul(1);
     assert_eq!(CHECKED_MUL, Some(Duration::SECOND));
 
-    const MUL_F32: Duration = Duration::SECOND.mul_f32(1.0);
-    assert_eq!(MUL_F32, Duration::SECOND);
+    /*  FIXME(#110395)
+        const MUL_F32: Duration = Duration::SECOND.mul_f32(1.0);
+        assert_eq!(MUL_F32, Duration::SECOND);
 
-    const MUL_F64: Duration = Duration::SECOND.mul_f64(1.0);
-    assert_eq!(MUL_F64, Duration::SECOND);
+        const MUL_F64: Duration = Duration::SECOND.mul_f64(1.0);
+        assert_eq!(MUL_F64, Duration::SECOND);
 
-    const CHECKED_DIV: Option<Duration> = Duration::SECOND.checked_div(1);
-    assert_eq!(CHECKED_DIV, Some(Duration::SECOND));
+        const CHECKED_DIV: Option<Duration> = Duration::SECOND.checked_div(1);
+        assert_eq!(CHECKED_DIV, Some(Duration::SECOND));
 
-    const DIV_F32: Duration = Duration::SECOND.div_f32(1.0);
-    assert_eq!(DIV_F32, Duration::SECOND);
+        const DIV_F32: Duration = Duration::SECOND.div_f32(1.0);
+        assert_eq!(DIV_F32, Duration::SECOND);
 
-    const DIV_F64: Duration = Duration::SECOND.div_f64(1.0);
-    assert_eq!(DIV_F64, Duration::SECOND);
+        const DIV_F64: Duration = Duration::SECOND.div_f64(1.0);
+        assert_eq!(DIV_F64, Duration::SECOND);
+    */
 
     const DIV_DURATION_F32: f32 = Duration::SECOND.div_duration_f32(Duration::SECOND);
     assert_eq!(DIV_DURATION_F32, 1.0);
@@ -416,4 +553,12 @@ fn duration_const() {
 
     const SATURATING_MUL: Duration = MAX.saturating_mul(2);
     assert_eq!(SATURATING_MUL, MAX);
+}
+
+#[test]
+fn from_neg_zero() {
+    assert_eq!(Duration::try_from_secs_f32(-0.0), Ok(Duration::ZERO));
+    assert_eq!(Duration::try_from_secs_f64(-0.0), Ok(Duration::ZERO));
+    assert_eq!(Duration::from_secs_f32(-0.0), Duration::ZERO);
+    assert_eq!(Duration::from_secs_f64(-0.0), Duration::ZERO);
 }

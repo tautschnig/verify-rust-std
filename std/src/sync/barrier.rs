@@ -13,13 +13,14 @@ use crate::sync::{Condvar, Mutex};
 /// use std::sync::{Arc, Barrier};
 /// use std::thread;
 ///
-/// let mut handles = Vec::with_capacity(10);
-/// let barrier = Arc::new(Barrier::new(10));
-/// for _ in 0..10 {
+/// let n = 10;
+/// let mut handles = Vec::with_capacity(n);
+/// let barrier = Arc::new(Barrier::new(n));
+/// for _ in 0..n {
 ///     let c = Arc::clone(&barrier);
 ///     // The same messages will be printed together.
 ///     // You will NOT see any interleaving.
-///     handles.push(thread::spawn(move|| {
+///     handles.push(thread::spawn(move || {
 ///         println!("before wait");
 ///         c.wait();
 ///         println!("after wait");
@@ -80,7 +81,10 @@ impl Barrier {
     /// let barrier = Barrier::new(10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(n: usize) -> Barrier {
+    #[rustc_const_stable(feature = "const_barrier", since = "1.78.0")]
+    #[must_use]
+    #[inline]
+    pub const fn new(n: usize) -> Barrier {
         Barrier {
             lock: Mutex::new(BarrierState { count: 0, generation_id: 0 }),
             cvar: Condvar::new(),
@@ -104,13 +108,14 @@ impl Barrier {
     /// use std::sync::{Arc, Barrier};
     /// use std::thread;
     ///
-    /// let mut handles = Vec::with_capacity(10);
-    /// let barrier = Arc::new(Barrier::new(10));
-    /// for _ in 0..10 {
+    /// let n = 10;
+    /// let mut handles = Vec::with_capacity(n);
+    /// let barrier = Arc::new(Barrier::new(n));
+    /// for _ in 0..n {
     ///     let c = Arc::clone(&barrier);
     ///     // The same messages will be printed together.
     ///     // You will NOT see any interleaving.
-    ///     handles.push(thread::spawn(move|| {
+    ///     handles.push(thread::spawn(move || {
     ///         println!("before wait");
     ///         c.wait();
     ///         println!("after wait");
@@ -127,11 +132,8 @@ impl Barrier {
         let local_gen = lock.generation_id;
         lock.count += 1;
         if lock.count < self.num_threads {
-            // We need a while loop to guard against spurious wakeups.
-            // https://en.wikipedia.org/wiki/Spurious_wakeup
-            while local_gen == lock.generation_id && lock.count < self.num_threads {
-                lock = self.cvar.wait(lock).unwrap();
-            }
+            let _guard =
+                self.cvar.wait_while(lock, |state| local_gen == state.generation_id).unwrap();
             BarrierWaitResult(false)
         } else {
             lock.count = 0;
@@ -166,6 +168,7 @@ impl BarrierWaitResult {
     /// println!("{:?}", barrier_wait_result.is_leader());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn is_leader(&self) -> bool {
         self.0
     }

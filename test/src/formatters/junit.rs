@@ -1,17 +1,16 @@
-use std::io::{self, prelude::Write};
+use std::io::prelude::Write;
+use std::io::{self};
 use std::time::Duration;
 
 use super::OutputFormatter;
-use crate::{
-    console::{ConsoleTestState, OutputLocation},
-    test_result::TestResult,
-    time,
-    types::{TestDesc, TestType},
-};
+use crate::console::{ConsoleTestDiscoveryState, ConsoleTestState, OutputLocation};
+use crate::test_result::TestResult;
+use crate::time;
+use crate::types::{TestDesc, TestType};
 
 pub struct JunitFormatter<T> {
     out: OutputLocation<T>,
-    results: Vec<(TestDesc, TestResult, Duration)>,
+    results: Vec<(TestDesc, TestResult, Duration, Vec<u8>)>,
 }
 
 impl<T: Write> JunitFormatter<T> {
@@ -26,10 +25,38 @@ impl<T: Write> JunitFormatter<T> {
     }
 }
 
+fn str_to_cdata(s: &str) -> String {
+    // Drop the stdout in a cdata. Unfortunately, you can't put either of `]]>` or
+    // `<?'` in a CDATA block, so the escaping gets a little weird.
+    let escaped_output = s.replace("]]>", "]]]]><![CDATA[>");
+    let escaped_output = escaped_output.replace("<?", "<]]><![CDATA[?");
+    // We also smuggle newlines as &#xa so as to keep all the output on one line
+    let escaped_output = escaped_output.replace('\n', "]]>&#xA;<![CDATA[");
+    // Prune empty CDATA blocks resulting from any escaping
+    let escaped_output = escaped_output.replace("<![CDATA[]]>", "");
+    format!("<![CDATA[{}]]>", escaped_output)
+}
+
 impl<T: Write> OutputFormatter for JunitFormatter<T> {
-    fn write_run_start(&mut self, _test_count: usize) -> io::Result<()> {
+    fn write_discovery_start(&mut self) -> io::Result<()> {
+        Err(io::Error::new(io::ErrorKind::NotFound, "Not yet implemented!"))
+    }
+
+    fn write_test_discovered(&mut self, _desc: &TestDesc, _test_type: &str) -> io::Result<()> {
+        Err(io::Error::new(io::ErrorKind::NotFound, "Not yet implemented!"))
+    }
+
+    fn write_discovery_finish(&mut self, _state: &ConsoleTestDiscoveryState) -> io::Result<()> {
+        Err(io::Error::new(io::ErrorKind::NotFound, "Not yet implemented!"))
+    }
+
+    fn write_run_start(
+        &mut self,
+        _test_count: usize,
+        _shuffle_seed: Option<u64>,
+    ) -> io::Result<()> {
         // We write xml header on run start
-        self.write_message(&"<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+        self.write_message("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
     }
 
     fn write_test_start(&mut self, _desc: &TestDesc) -> io::Result<()> {
@@ -47,20 +74,20 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
         desc: &TestDesc,
         result: &TestResult,
         exec_time: Option<&time::TestExecTime>,
-        _stdout: &[u8],
+        stdout: &[u8],
         _state: &ConsoleTestState,
     ) -> io::Result<()> {
-        // Because the testsuit node holds some of the information as attributes, we can't write it
-        // until all of the tests has ran. Instead of writting every result as they come in, we add
+        // Because the testsuite node holds some of the information as attributes, we can't write it
+        // until all of the tests have finished. Instead of writing every result as they come in, we add
         // them to a Vec and write them all at once when run is complete.
-        let duration = exec_time.map(|t| t.0.clone()).unwrap_or_default();
-        self.results.push((desc.clone(), result.clone(), duration));
+        let duration = exec_time.map(|t| t.0).unwrap_or_default();
+        self.results.push((desc.clone(), result.clone(), duration, stdout.to_vec()));
         Ok(())
     }
     fn write_run_finish(&mut self, state: &ConsoleTestState) -> io::Result<bool> {
         self.write_message("<testsuites>")?;
 
-        self.write_message(&*format!(
+        self.write_message(&format!(
             "<testsuite name=\"test\" package=\"test\" id=\"0\" \
              errors=\"0\" \
              failures=\"{}\" \
@@ -69,62 +96,80 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
              >",
             state.failed, state.total, state.ignored
         ))?;
-        for (desc, result, duration) in std::mem::replace(&mut self.results, Vec::new()) {
+        for (desc, result, duration, stdout) in std::mem::take(&mut self.results) {
             let (class_name, test_name) = parse_class_name(&desc);
             match result {
                 TestResult::TrIgnored => { /* no-op */ }
                 TestResult::TrFailed => {
-                    self.write_message(&*format!(
+                    self.write_message(&format!(
                         "<testcase classname=\"{}\" \
                          name=\"{}\" time=\"{}\">",
                         class_name,
                         test_name,
-                        duration.as_secs()
+                        duration.as_secs_f64()
                     ))?;
                     self.write_message("<failure type=\"assert\"/>")?;
+                    if !stdout.is_empty() {
+                        self.write_message("<system-out>")?;
+                        self.write_message(&str_to_cdata(&String::from_utf8_lossy(&stdout)))?;
+                        self.write_message("</system-out>")?;
+                    }
                     self.write_message("</testcase>")?;
                 }
 
                 TestResult::TrFailedMsg(ref m) => {
-                    self.write_message(&*format!(
+                    self.write_message(&format!(
                         "<testcase classname=\"{}\" \
                          name=\"{}\" time=\"{}\">",
                         class_name,
                         test_name,
-                        duration.as_secs()
+                        duration.as_secs_f64()
                     ))?;
-                    self.write_message(&*format!("<failure message=\"{}\" type=\"assert\"/>", m))?;
+                    self.write_message(&format!("<failure message=\"{m}\" type=\"assert\"/>"))?;
+                    if !stdout.is_empty() {
+                        self.write_message("<system-out>")?;
+                        self.write_message(&str_to_cdata(&String::from_utf8_lossy(&stdout)))?;
+                        self.write_message("</system-out>")?;
+                    }
                     self.write_message("</testcase>")?;
                 }
 
                 TestResult::TrTimedFail => {
-                    self.write_message(&*format!(
+                    self.write_message(&format!(
                         "<testcase classname=\"{}\" \
                          name=\"{}\" time=\"{}\">",
                         class_name,
                         test_name,
-                        duration.as_secs()
+                        duration.as_secs_f64()
                     ))?;
                     self.write_message("<failure type=\"timeout\"/>")?;
                     self.write_message("</testcase>")?;
                 }
 
                 TestResult::TrBench(ref b) => {
-                    self.write_message(&*format!(
+                    self.write_message(&format!(
                         "<testcase classname=\"benchmark::{}\" \
                          name=\"{}\" time=\"{}\" />",
                         class_name, test_name, b.ns_iter_summ.sum
                     ))?;
                 }
 
-                TestResult::TrOk | TestResult::TrAllowedFail => {
-                    self.write_message(&*format!(
+                TestResult::TrOk => {
+                    self.write_message(&format!(
                         "<testcase classname=\"{}\" \
-                         name=\"{}\" time=\"{}\"/>",
+                         name=\"{}\" time=\"{}\"",
                         class_name,
                         test_name,
-                        duration.as_secs()
+                        duration.as_secs_f64()
                     ))?;
+                    if stdout.is_empty() || !state.options.display_output {
+                        self.write_message("/>")?;
+                    } else {
+                        self.write_message("><system-out>")?;
+                        self.write_message(&str_to_cdata(&String::from_utf8_lossy(&stdout)))?;
+                        self.write_message("</system-out>")?;
+                        self.write_message("</testcase>")?;
+                    }
                 }
             }
         }
@@ -132,6 +177,8 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
         self.write_message("<system-err/>")?;
         self.write_message("</testsuite>")?;
         self.write_message("</testsuites>")?;
+
+        self.out.write_all(b"\n")?;
 
         Ok(state.failed == 0)
     }

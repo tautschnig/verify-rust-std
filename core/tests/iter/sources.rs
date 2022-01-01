@@ -1,5 +1,6 @@
-use super::*;
 use core::iter::*;
+
+use super::*;
 
 #[test]
 fn test_repeat() {
@@ -105,4 +106,77 @@ fn test_once_with() {
 fn test_empty() {
     let mut it = empty::<i32>();
     assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_repeat_n_drop() {
+    #[derive(Clone, Debug)]
+    struct DropCounter<'a>(&'a Cell<usize>);
+    impl Drop for DropCounter<'_> {
+        fn drop(&mut self) {
+            self.0.set(self.0.get() + 1);
+        }
+    }
+
+    // `repeat_n(x, 0)` drops `x` immediately
+    let count = Cell::new(0);
+    let item = DropCounter(&count);
+    let mut it = repeat_n(item, 0);
+    assert_eq!(count.get(), 1);
+    assert!(it.next().is_none());
+    assert_eq!(count.get(), 1);
+    drop(it);
+    assert_eq!(count.get(), 1);
+
+    // Dropping the iterator needs to drop the item if it's non-empty
+    let count = Cell::new(0);
+    let item = DropCounter(&count);
+    let it = repeat_n(item, 3);
+    assert_eq!(count.get(), 0);
+    drop(it);
+    assert_eq!(count.get(), 1);
+
+    // Dropping the iterator doesn't drop the item if it was exhausted
+    let count = Cell::new(0);
+    let item = DropCounter(&count);
+    let mut it = repeat_n(item, 3);
+    assert_eq!(count.get(), 0);
+    let x0 = it.next().unwrap();
+    assert_eq!(count.get(), 0);
+    let x1 = it.next().unwrap();
+    assert_eq!(count.get(), 0);
+    let x2 = it.next().unwrap();
+    assert_eq!(count.get(), 0);
+    assert!(it.next().is_none());
+    assert_eq!(count.get(), 0);
+    assert!(it.next().is_none());
+    assert_eq!(count.get(), 0);
+    drop(it);
+    assert_eq!(count.get(), 0);
+    drop((x0, x1, x2));
+    assert_eq!(count.get(), 3);
+}
+
+#[test]
+fn test_repeat_n_soundness() {
+    let x = std::iter::repeat_n(String::from("use after free"), 0);
+    println!("{x:?}");
+
+    pub struct PanicOnClone;
+
+    impl Clone for PanicOnClone {
+        fn clone(&self) -> Self {
+            unreachable!()
+        }
+    }
+
+    // `repeat_n` should drop the element immediately if `count` is zero.
+    // `Clone` should then not try to clone the element.
+    let x = std::iter::repeat_n(PanicOnClone, 0);
+    let _ = x.clone();
+
+    let mut y = std::iter::repeat_n(Box::new(0), 1);
+    let x = y.next().unwrap();
+    let _z = y;
+    assert_eq!(0, *x);
 }
