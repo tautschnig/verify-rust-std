@@ -1,5 +1,6 @@
-use super::*;
 use core::iter::*;
+
+use super::*;
 
 #[test]
 fn test_zip_nth() {
@@ -184,7 +185,11 @@ fn test_zip_nested_sideffectful() {
         let it = xs.iter_mut().map(|x| *x = 1).enumerate().zip(&ys);
         it.count();
     }
-    assert_eq!(&xs, &[1, 1, 1, 1, 1, 0]);
+    let length_aware = &xs == &[1, 1, 1, 1, 0, 0];
+    let probe_first = &xs == &[1, 1, 1, 1, 1, 0];
+
+    // either implementation is valid according to zip documentation
+    assert!(length_aware || probe_first);
 }
 
 #[test]
@@ -230,6 +235,32 @@ fn test_zip_trusted_random_access_composition() {
     fn assert_trusted_random_access<T: TrustedRandomAccess>(_a: &T) {}
     assert_trusted_random_access(&z2);
     assert_eq!(z2.next().unwrap(), ((1, 1), 1));
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn test_zip_trusted_random_access_next_back_drop() {
+    use std::panic::{AssertUnwindSafe, catch_unwind};
+
+    let mut counter = 0;
+
+    let it = [42].iter().map(|e| {
+        let c = counter;
+        counter += 1;
+        if c == 0 {
+            panic!("bomb");
+        }
+
+        e
+    });
+    let it2 = [(); 0].iter();
+    let mut zip = it.zip(it2);
+    catch_unwind(AssertUnwindSafe(|| {
+        zip.next_back();
+    }))
+    .unwrap_err();
+    assert!(zip.next().is_none());
+    assert_eq!(counter, 1);
 }
 
 #[test]

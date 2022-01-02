@@ -1,7 +1,9 @@
 mod control_flow;
+mod from_residual;
 
-use core::ops::{Bound, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
-use core::ops::{Deref, DerefMut};
+use core::ops::{
+    Bound, Deref, DerefMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
+};
 
 // Test the Range structs and syntax.
 
@@ -231,4 +233,10 @@ fn deref_on_ref() {
     let mut x: isize = 4;
     let y = deref(&mut x);
     assert_eq!(y, 4);
+}
+
+#[test]
+#[allow(unreachable_code)]
+fn test_not_never() {
+    if !return () {}
 }

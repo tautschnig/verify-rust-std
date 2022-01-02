@@ -69,7 +69,7 @@ fn test_collect() {
 
     // test that it does not take more elements than it needs
     let mut functions: [Box<dyn Fn() -> Result<(), isize>>; 3] =
-        [box || Ok(()), box || Err(1), box || panic!()];
+        [Box::new(|| Ok(())), Box::new(|| Err(1)), Box::new(|| panic!())];
 
     let v: Result<Vec<()>, isize> = functions.iter_mut().map(|f| (*f)()).collect();
     assert!(v == Err(1));
@@ -80,9 +80,9 @@ fn test_fmt_default() {
     let ok: Result<isize, &'static str> = Ok(100);
     let err: Result<isize, &'static str> = Err("Err");
 
-    let s = format!("{:?}", ok);
+    let s = format!("{ok:?}");
     assert_eq!(s, "Ok(100)");
-    let s = format!("{:?}", err);
+    let s = format!("{err:?}");
     assert_eq!(s, "Err(\"Err\")");
 }
 
@@ -93,15 +93,6 @@ fn test_unwrap_or() {
 
     assert_eq!(ok.unwrap_or(50), 100);
     assert_eq!(ok_err.unwrap_or(50), 50);
-}
-
-#[test]
-fn test_ok_or_err() {
-    let ok: Result<isize, isize> = Ok(100);
-    let err: Result<isize, isize> = Err(200);
-
-    assert_eq!(ok.into_ok_or_err(), 100);
-    assert_eq!(err.into_ok_or_err(), 200);
 }
 
 #[test]
@@ -179,6 +170,7 @@ pub fn test_iter() {
 }
 
 #[test]
+#[allow(for_loops_over_fallibles)]
 pub fn test_iter_mut() {
     let mut ok: Result<isize, &'static str> = Ok(100);
     for loc in ok.iter_mut() {
@@ -204,6 +196,7 @@ pub fn test_unwrap_or_default() {
 }
 
 #[test]
+#[allow(non_local_definitions)]
 pub fn test_into_ok() {
     fn infallible_op() -> Result<isize, !> {
         Ok(666)
@@ -226,6 +219,7 @@ pub fn test_into_ok() {
 }
 
 #[test]
+#[allow(non_local_definitions)]
 pub fn test_into_err() {
     fn until_error_op() -> Result<!, isize> {
         Err(666)
@@ -353,6 +347,29 @@ fn result_const() {
 }
 
 #[test]
+const fn result_const_mut() {
+    let mut result: Result<usize, bool> = Ok(32);
+
+    {
+        let as_mut = result.as_mut();
+        match as_mut {
+            Ok(v) => *v = 42,
+            Err(_) => unreachable!(),
+        }
+    }
+
+    let mut result_err: Result<usize, bool> = Err(false);
+
+    {
+        let as_mut = result_err.as_mut();
+        match as_mut {
+            Ok(_) => unreachable!(),
+            Err(v) => *v = true,
+        }
+    }
+}
+
+#[test]
 fn result_opt_conversions() {
     #[derive(Copy, Clone, Debug, PartialEq)]
     struct BadNumErr;
@@ -391,15 +408,16 @@ fn result_opt_conversions() {
 }
 
 #[test]
-#[cfg(not(bootstrap))] // Needs the V2 trait
 fn result_try_trait_v2_branch() {
-    use core::num::NonZeroU32;
-    use core::ops::{ControlFlow::*, Try};
+    use core::num::NonZero;
+    use core::ops::ControlFlow::*;
+    use core::ops::Try;
+
     assert_eq!(Ok::<i32, i32>(4).branch(), Continue(4));
     assert_eq!(Err::<i32, i32>(4).branch(), Break(Err(4)));
-    let one = NonZeroU32::new(1).unwrap();
-    assert_eq!(Ok::<(), NonZeroU32>(()).branch(), Continue(()));
-    assert_eq!(Err::<(), NonZeroU32>(one).branch(), Break(Err(one)));
-    assert_eq!(Ok::<NonZeroU32, ()>(one).branch(), Continue(one));
-    assert_eq!(Err::<NonZeroU32, ()>(()).branch(), Break(Err(())));
+    let one = NonZero::new(1).unwrap();
+    assert_eq!(Ok::<(), NonZero<u32>>(()).branch(), Continue(()));
+    assert_eq!(Err::<(), NonZero<u32>>(one).branch(), Break(Err(one)));
+    assert_eq!(Ok::<NonZero<u32>, ()>(one).branch(), Continue(one));
+    assert_eq!(Err::<NonZero<u32>, ()>(()).branch(), Break(Err(())));
 }

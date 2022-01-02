@@ -2,8 +2,8 @@
 mod tests;
 
 use crate::fmt;
-use crate::sync::{mutex, poison, LockResult, MutexGuard, PoisonError};
-use crate::sys_common::condvar as sys;
+use crate::sync::{LockResult, MutexGuard, PoisonError, mutex, poison};
+use crate::sys::sync as sys;
 use crate::time::{Duration, Instant};
 
 /// A type indicating whether a timed wait on a condition variable returned
@@ -21,11 +21,11 @@ impl WaitTimeoutResult {
     ///
     /// # Examples
     ///
-    /// This example spawns a thread which will update the boolean value and
-    /// then wait 100 milliseconds before notifying the condvar.
+    /// This example spawns a thread which will sleep 20 milliseconds before
+    /// updating a boolean value and then notifying the condvar.
     ///
-    /// The main thread will wait with a timeout on the condvar and then leave
-    /// once the boolean has been updated and notified.
+    /// The main thread will wait with a 10 millisecond timeout on the condvar
+    /// and will leave the loop upon timeout.
     ///
     /// ```
     /// use std::sync::{Arc, Condvar, Mutex};
@@ -35,6 +35,7 @@ impl WaitTimeoutResult {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
+    /// # let handle =
     /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///
@@ -49,18 +50,19 @@ impl WaitTimeoutResult {
     ///
     /// // Wait for the thread to start up.
     /// let (lock, cvar) = &*pair;
-    /// let mut started = lock.lock().unwrap();
     /// loop {
     ///     // Let's put a timeout on the condvar's wait.
-    ///     let result = cvar.wait_timeout(started, Duration::from_millis(10)).unwrap();
-    ///     // 10 milliseconds have passed, or maybe the value changed!
-    ///     started = result.0;
-    ///     if *started == true {
-    ///         // We received the notification and the value has been updated, we can leave.
+    ///     let result = cvar.wait_timeout(lock.lock().unwrap(), Duration::from_millis(10)).unwrap();
+    ///     // 10 milliseconds have passed.
+    ///     if result.1.timed_out() {
+    ///         // timed out now and we can leave.
     ///         break
     ///     }
     /// }
+    /// # // Prevent leaks for Miri.
+    /// # let _ = handle.join();
     /// ```
+    #[must_use]
     #[stable(feature = "wait_timeout", since = "1.5.0")]
     pub fn timed_out(&self) -> bool {
         self.0
@@ -89,7 +91,7 @@ impl WaitTimeoutResult {
 /// let pair2 = Arc::clone(&pair);
 ///
 /// // Inside of our lock, spawn a new thread, and then wait for it to start.
-/// thread::spawn(move|| {
+/// thread::spawn(move || {
 ///     let (lock, cvar) = &*pair2;
 ///     let mut started = lock.lock().unwrap();
 ///     *started = true;
@@ -121,7 +123,10 @@ impl Condvar {
     /// let condvar = Condvar::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> Condvar {
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
+    #[must_use]
+    #[inline]
+    pub const fn new() -> Condvar {
         Condvar { inner: sys::Condvar::new() }
     }
 
@@ -164,7 +169,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -190,8 +195,11 @@ impl Condvar {
         if poisoned { Err(PoisonError::new(guard)) } else { Ok(guard) }
     }
 
-    /// Blocks the current thread until this condition variable receives a
-    /// notification and the provided condition is false.
+    /// Blocks the current thread until the provided condition becomes false.
+    ///
+    /// `condition` is checked immediately; if not met (returns `true`), this
+    /// will [`wait`] for the next notification then check again. This repeats
+    /// until `condition` returns `false`, in which case this function returns.
     ///
     /// This function will atomically unlock the mutex specified (represented by
     /// `guard`) and block the current thread. This means that any calls
@@ -205,6 +213,7 @@ impl Condvar {
     /// poisoned when this thread re-acquires the lock. For more information,
     /// see information about [poisoning] on the [`Mutex`] type.
     ///
+    /// [`wait`]: Self::wait
     /// [`notify_one`]: Self::notify_one
     /// [`notify_all`]: Self::notify_all
     /// [poisoning]: super::Mutex#poisoning
@@ -219,7 +228,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(true), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut pending = lock.lock().unwrap();
     ///     *pending = false;
@@ -254,7 +263,7 @@ impl Condvar {
     /// except that the thread will be blocked for roughly no longer
     /// than `ms` milliseconds. This method should not be used for
     /// precise timing due to anomalies such as preemption or platform
-    /// differences that may not cause the maximum amount of time
+    /// differences that might not cause the maximum amount of time
     /// waited to be precisely `ms`.
     ///
     /// Note that the best effort is made to ensure that the time waited is
@@ -278,7 +287,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -301,7 +310,7 @@ impl Condvar {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::sync::Condvar::wait_timeout`")]
+    #[deprecated(since = "1.6.0", note = "replaced by `std::sync::Condvar::wait_timeout`")]
     pub fn wait_timeout_ms<'a, T>(
         &self,
         guard: MutexGuard<'a, T>,
@@ -317,7 +326,7 @@ impl Condvar {
     /// The semantics of this function are equivalent to [`wait`] except that
     /// the thread will be blocked for roughly no longer than `dur`. This
     /// method should not be used for precise timing due to anomalies such as
-    /// preemption or platform differences that may not cause the maximum
+    /// preemption or platform differences that might not cause the maximum
     /// amount of time waited to be precisely `dur`.
     ///
     /// Note that the best effort is made to ensure that the time waited is
@@ -350,7 +359,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -392,7 +401,7 @@ impl Condvar {
     /// The semantics of this function are equivalent to [`wait_while`] except
     /// that the thread will be blocked for roughly no longer than `dur`. This
     /// method should not be used for precise timing due to anomalies such as
-    /// preemption or platform differences that may not cause the maximum
+    /// preemption or platform differences that might not cause the maximum
     /// amount of time waited to be precisely `dur`.
     ///
     /// Note that the best effort is made to ensure that the time waited is
@@ -418,7 +427,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(true), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut pending = lock.lock().unwrap();
     ///     *pending = false;
@@ -482,7 +491,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -522,7 +531,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;

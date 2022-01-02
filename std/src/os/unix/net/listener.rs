@@ -1,5 +1,5 @@
-use super::{sockaddr_un, SocketAddr, UnixStream};
-use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use super::{SocketAddr, UnixStream, sockaddr_un};
+use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sys::cvt;
 use crate::sys::net::Socket;
@@ -63,7 +63,7 @@ impl UnixListener {
     /// let listener = match UnixListener::bind("/path/to/the/socket") {
     ///     Ok(sock) => sock,
     ///     Err(e) => {
-    ///         println!("Couldn't connect: {:?}", e);
+    ///         println!("Couldn't connect: {e:?}");
     ///         return
     ///     }
     /// };
@@ -73,10 +73,80 @@ impl UnixListener {
         unsafe {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
+            #[cfg(any(
+                target_os = "windows",
+                target_os = "redox",
+                target_os = "espidf",
+                target_os = "horizon"
+            ))]
+            const backlog: core::ffi::c_int = 128;
+            #[cfg(any(
+                // Silently capped to `/proc/sys/net/core/somaxconn`.
+                target_os = "linux",
+                // Silently capped to `kern.ipc.soacceptqueue`.
+                target_os = "freebsd",
+                // Silently capped to `kern.somaxconn sysctl`.
+                target_os = "openbsd",
+                // Silently capped to the default 128.
+                target_vendor = "apple",
+            ))]
+            const backlog: core::ffi::c_int = -1;
+            #[cfg(not(any(
+                target_os = "windows",
+                target_os = "redox",
+                target_os = "espidf",
+                target_os = "horizon",
+                target_os = "linux",
+                target_os = "freebsd",
+                target_os = "openbsd",
+                target_vendor = "apple",
+            )))]
+            const backlog: libc::c_int = libc::SOMAXCONN;
 
-            cvt(libc::bind(*inner.as_inner(), &addr as *const _ as *const _, len as _))?;
-            cvt(libc::listen(*inner.as_inner(), 128))?;
+            cvt(libc::bind(inner.as_inner().as_raw_fd(), (&raw const addr) as *const _, len as _))?;
+            cvt(libc::listen(inner.as_inner().as_raw_fd(), backlog))?;
 
+            Ok(UnixListener(inner))
+        }
+    }
+
+    /// Creates a new `UnixListener` bound to the specified [`socket address`].
+    ///
+    /// [`socket address`]: crate::os::unix::net::SocketAddr
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::{UnixListener};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let listener1 = UnixListener::bind("path/to/socket")?;
+    ///     let addr = listener1.local_addr()?;
+    ///
+    ///     let listener2 = match UnixListener::bind_addr(&addr) {
+    ///         Ok(sock) => sock,
+    ///         Err(err) => {
+    ///             println!("Couldn't bind: {err:?}");
+    ///             return Err(err);
+    ///         }
+    ///     };
+    ///     Ok(())
+    /// }
+    /// ```
+    #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
+    pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixListener> {
+        unsafe {
+            let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
+            #[cfg(target_os = "linux")]
+            const backlog: core::ffi::c_int = -1;
+            #[cfg(not(target_os = "linux"))]
+            const backlog: core::ffi::c_int = 128;
+            cvt(libc::bind(
+                inner.as_raw_fd(),
+                (&raw const socket_addr.addr) as *const _,
+                socket_addr.len as _,
+            ))?;
+            cvt(libc::listen(inner.as_raw_fd(), backlog))?;
             Ok(UnixListener(inner))
         }
     }
@@ -98,8 +168,8 @@ impl UnixListener {
     ///     let listener = UnixListener::bind("/path/to/the/socket")?;
     ///
     ///     match listener.accept() {
-    ///         Ok((socket, addr)) => println!("Got a client: {:?}", addr),
-    ///         Err(e) => println!("accept function failed: {:?}", e),
+    ///         Ok((socket, addr)) => println!("Got a client: {addr:?}"),
+    ///         Err(e) => println!("accept function failed: {e:?}"),
     ///     }
     ///     Ok(())
     /// }
@@ -108,7 +178,7 @@ impl UnixListener {
     pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
         let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
         let mut len = mem::size_of_val(&storage) as libc::socklen_t;
-        let sock = self.0.accept(&mut storage as *mut _ as *mut _, &mut len)?;
+        let sock = self.0.accept((&raw mut storage) as *mut _, &mut len)?;
         let addr = SocketAddr::from_parts(storage, len)?;
         Ok((UnixStream(sock), addr))
     }
@@ -150,7 +220,7 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
+        SocketAddr::new(|addr, len| unsafe { libc::getsockname(self.as_raw_fd(), addr, len) })
     }
 
     /// Moves the socket into or out of nonblocking mode.
@@ -188,7 +258,7 @@ impl UnixListener {
     ///     let listener = UnixListener::bind("/tmp/sock")?;
     ///
     ///     if let Ok(Some(err)) = listener.take_error() {
-    ///         println!("Got error: {:?}", err);
+    ///         println!("Got error: {err:?}");
     ///     }
     ///     Ok(())
     /// }
@@ -242,7 +312,7 @@ impl UnixListener {
 impl AsRawFd for UnixListener {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        *self.0.as_inner()
+        self.0.as_inner().as_raw_fd()
     }
 }
 
@@ -250,7 +320,7 @@ impl AsRawFd for UnixListener {
 impl FromRawFd for UnixListener {
     #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> UnixListener {
-        UnixListener(Socket::from_inner(fd))
+        UnixListener(Socket::from_inner(FromInner::from_inner(OwnedFd::from_raw_fd(fd))))
     }
 }
 
@@ -258,7 +328,32 @@ impl FromRawFd for UnixListener {
 impl IntoRawFd for UnixListener {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        self.0.into_inner()
+        self.0.into_inner().into_inner().into_raw_fd()
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for UnixListener {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_inner().as_fd()
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl From<OwnedFd> for UnixListener {
+    #[inline]
+    fn from(fd: OwnedFd) -> UnixListener {
+        UnixListener(Socket::from_inner(FromInner::from_inner(fd)))
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl From<UnixListener> for OwnedFd {
+    /// Takes ownership of a [`UnixListener`]'s socket file descriptor.
+    #[inline]
+    fn from(listener: UnixListener) -> OwnedFd {
+        listener.0.into_inner().into_inner()
     }
 }
 
@@ -303,6 +398,7 @@ impl<'a> IntoIterator for &'a UnixListener {
 /// }
 /// ```
 #[derive(Debug)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct Incoming<'a> {
     listener: &'a UnixListener,

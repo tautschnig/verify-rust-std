@@ -1,10 +1,12 @@
 use super::Builder;
 use crate::any::Any;
-use crate::mem;
-use crate::result;
-use crate::sync::mpsc::{channel, Sender};
-use crate::thread::{self, ThreadId};
-use crate::time::Duration;
+use crate::panic::panic_any;
+use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::mpsc::{Sender, channel};
+use crate::sync::{Arc, Barrier};
+use crate::thread::{self, Scope, ThreadId};
+use crate::time::{Duration, Instant};
+use crate::{mem, result};
 
 // !!! These tests are dangerous. If something is buggy, they will hang, !!!
 // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
@@ -31,6 +33,35 @@ fn test_named_thread() {
         .unwrap();
 }
 
+#[cfg(any(
+    // Note: musl didn't add pthread_getname_np until 1.2.3
+    all(target_os = "linux", target_env = "gnu"),
+    target_vendor = "apple",
+))]
+#[test]
+fn test_named_thread_truncation() {
+    use crate::ffi::CStr;
+
+    let long_name = crate::iter::once("test_named_thread_truncation")
+        .chain(crate::iter::repeat(" yada").take(100))
+        .collect::<String>();
+
+    let result = Builder::new().name(long_name.clone()).spawn(move || {
+        // Rust remembers the full thread name itself.
+        assert_eq!(thread::current().name(), Some(long_name.as_str()));
+
+        // But the system is limited -- make sure we successfully set a truncation.
+        let mut buf = vec![0u8; long_name.len() + 1];
+        unsafe {
+            libc::pthread_getname_np(libc::pthread_self(), buf.as_mut_ptr().cast(), buf.len());
+        }
+        let cstr = CStr::from_bytes_until_nul(&buf).unwrap();
+        assert!(cstr.to_bytes().len() > 0);
+        assert!(long_name.as_bytes().starts_with(cstr.to_bytes()));
+    });
+    result.unwrap().join().unwrap();
+}
+
 #[test]
 #[should_panic]
 fn test_invalid_named_thread() {
@@ -44,6 +75,36 @@ fn test_run_basic() {
         tx.send(()).unwrap();
     });
     rx.recv().unwrap();
+}
+
+#[test]
+fn test_is_finished() {
+    let b = Arc::new(Barrier::new(2));
+    let t = thread::spawn({
+        let b = b.clone();
+        move || {
+            b.wait();
+            1234
+        }
+    });
+
+    // Thread is definitely running here, since it's still waiting for the barrier.
+    assert_eq!(t.is_finished(), false);
+
+    // Unblock the barrier.
+    b.wait();
+
+    // Now check that t.is_finished() becomes true within a reasonable time.
+    let start = Instant::now();
+    while !t.is_finished() {
+        assert!(start.elapsed() < Duration::from_secs(2));
+        thread::sleep(Duration::from_millis(15));
+    }
+
+    // Joining the thread should not block for a significant time now.
+    let join_time = Instant::now();
+    assert_eq!(t.join().unwrap(), 1234);
+    assert!(join_time.elapsed() < Duration::from_secs(2));
 }
 
 #[test]
@@ -91,7 +152,7 @@ where
 {
     let (tx, rx) = channel();
 
-    let x: Box<_> = box 1;
+    let x: Box<_> = Box::new(1);
     let x_in_parent = (&*x) as *const i32 as usize;
 
     spawnfn(Box::new(move || {
@@ -149,7 +210,7 @@ fn test_simple_newsched_spawn() {
 }
 
 #[test]
-fn test_try_panic_message_static_str() {
+fn test_try_panic_message_string_literal() {
     match thread::spawn(move || {
         panic!("static string");
     })
@@ -165,9 +226,9 @@ fn test_try_panic_message_static_str() {
 }
 
 #[test]
-fn test_try_panic_message_owned_str() {
+fn test_try_panic_any_message_owned_str() {
     match thread::spawn(move || {
-        panic!("owned string".to_string());
+        panic_any("owned string".to_string());
     })
     .join()
     {
@@ -181,9 +242,9 @@ fn test_try_panic_message_owned_str() {
 }
 
 #[test]
-fn test_try_panic_message_any() {
+fn test_try_panic_any_message_any() {
     match thread::spawn(move || {
-        panic!(box 413u16 as Box<dyn Any + Send>);
+        panic_any(Box::new(413u16) as Box<dyn Any + Send>);
     })
     .join()
     {
@@ -199,12 +260,34 @@ fn test_try_panic_message_any() {
 }
 
 #[test]
-fn test_try_panic_message_unit_struct() {
+fn test_try_panic_any_message_unit_struct() {
     struct Juju;
 
-    match thread::spawn(move || panic!(Juju)).join() {
+    match thread::spawn(move || panic_any(Juju)).join() {
         Err(ref e) if e.is::<Juju>() => {}
         Err(_) | Ok(()) => panic!(),
+    }
+}
+
+#[test]
+fn test_park_unpark_before() {
+    for _ in 0..10 {
+        thread::current().unpark();
+        thread::park();
+    }
+}
+
+#[test]
+fn test_park_unpark_called_other_thread() {
+    for _ in 0..10 {
+        let th = thread::current();
+
+        let _guard = thread::spawn(move || {
+            super::sleep(Duration::from_millis(50));
+            th.unpark();
+        });
+
+        thread::park();
     }
 }
 
@@ -258,5 +341,72 @@ fn test_thread_id_not_equal() {
     assert!(thread::current().id() != spawned_id);
 }
 
-// NOTE: the corresponding test for stderr is in ui/thread-stderr, due
-// to the test harness apparently interfering with stderr configuration.
+#[test]
+fn test_scoped_threads_drop_result_before_join() {
+    let actually_finished = &AtomicBool::new(false);
+    struct X<'scope, 'env>(&'scope Scope<'scope, 'env>, &'env AtomicBool);
+    impl Drop for X<'_, '_> {
+        fn drop(&mut self) {
+            thread::sleep(Duration::from_millis(20));
+            let actually_finished = self.1;
+            self.0.spawn(move || {
+                thread::sleep(Duration::from_millis(20));
+                actually_finished.store(true, Ordering::Relaxed);
+            });
+        }
+    }
+    thread::scope(|s| {
+        s.spawn(move || {
+            thread::sleep(Duration::from_millis(20));
+            X(s, actually_finished)
+        });
+    });
+    assert!(actually_finished.load(Ordering::Relaxed));
+}
+
+#[test]
+fn test_scoped_threads_nll() {
+    // this is mostly a *compilation test* for this exact function:
+    fn foo(x: &u8) {
+        thread::scope(|s| {
+            s.spawn(|| match x {
+                _ => (),
+            });
+        });
+    }
+    // let's also run it for good measure
+    let x = 42_u8;
+    foo(&x);
+}
+
+// Regression test for https://github.com/rust-lang/rust/issues/98498.
+#[test]
+#[cfg(miri)] // relies on Miri's data race detector
+fn scope_join_race() {
+    for _ in 0..100 {
+        let a_bool = AtomicBool::new(false);
+
+        thread::scope(|s| {
+            for _ in 0..5 {
+                s.spawn(|| a_bool.load(Ordering::Relaxed));
+            }
+
+            for _ in 0..5 {
+                s.spawn(|| a_bool.load(Ordering::Relaxed));
+            }
+        });
+    }
+}
+
+// Test that the smallest value for stack_size works on Windows.
+#[cfg(windows)]
+#[test]
+fn test_minimal_thread_stack() {
+    use crate::sync::atomic::AtomicU8;
+    static COUNT: AtomicU8 = AtomicU8::new(0);
+
+    let builder = thread::Builder::new().stack_size(1);
+    let before = builder.spawn(|| COUNT.fetch_add(1, Ordering::Relaxed)).unwrap().join().unwrap();
+    assert_eq!(before, 0);
+    assert_eq!(COUNT.load(Ordering::Relaxed), 1);
+}

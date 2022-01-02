@@ -115,7 +115,7 @@ fn test_eq_ignore_ascii_case() {
 #[test]
 fn inference_works() {
     let x = "a".to_string();
-    x.eq_ignore_ascii_case("A");
+    let _ = x.eq_ignore_ascii_case("A");
 }
 
 // Shorthands used by the is_ascii_* tests.
@@ -239,6 +239,23 @@ fn test_is_ascii_digit() {
     assert_all!(is_ascii_digit, "", "0123456789",);
     assert_none!(
         is_ascii_digit,
+        "abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOQPRSTUVWXYZ",
+        "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~",
+        " \t\n\x0c\r",
+        "\x00\x01\x02\x03\x04\x05\x06\x07",
+        "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f",
+        "\x10\x11\x12\x13\x14\x15\x16\x17",
+        "\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f",
+        "\x7f",
+    );
+}
+
+#[test]
+fn test_is_ascii_octdigit() {
+    assert_all!(is_ascii_octdigit, "", "01234567");
+    assert_none!(
+        is_ascii_octdigit,
         "abcdefghijklmnopqrstuvwxyz",
         "ABCDEFGHIJKLMNOQPRSTUVWXYZ",
         "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~",
@@ -454,10 +471,37 @@ fn ascii_ctype_const() {
         is_ascii_lowercase    => [true,  false, false, false, false];
         is_ascii_alphanumeric => [true,  true,  true,  false, false];
         is_ascii_digit        => [false, false, true,  false, false];
+        is_ascii_octdigit     => [false, false, false, false, false];
         is_ascii_hexdigit     => [true,  true,  true,  false, false];
         is_ascii_punctuation  => [false, false, false, true,  false];
         is_ascii_graphic      => [true,  true,  true,  true,  false];
         is_ascii_whitespace   => [false, false, false, false, true];
         is_ascii_control      => [false, false, false, false, false];
     }
+}
+
+#[test]
+fn test_escape_ascii() {
+    let mut buf = [0u8; 0x1F + 7]; // 0..=0x1F plus two quotes, slash, \x7F, \x80, \xFF
+    for idx in 0..=0x1F {
+        buf[idx] = idx as u8;
+    }
+    buf[0x20] = b'\'';
+    buf[0x21] = b'"';
+    buf[0x22] = b'\\';
+    buf[0x23] = 0x7F;
+    buf[0x24] = 0x80;
+    buf[0x25] = 0xff;
+    assert_eq!(
+        buf.escape_ascii().to_string(),
+        r#"\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\'\"\\\x7f\x80\xff"#
+    );
+}
+
+#[test]
+fn test_escape_ascii_iter() {
+    let mut it = b"\0fastpath\xffremainder\xff".escape_ascii();
+    let _ = it.advance_by(4);
+    let _ = it.advance_back_by(4);
+    assert_eq!(it.to_string(), r#"fastpath\xffremainder"#);
 }

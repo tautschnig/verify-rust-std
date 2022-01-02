@@ -1,14 +1,10 @@
-use std::mem::MaybeUninit;
-use std::{fmt, str};
-
-use core::num::flt2dec::{decode, DecodableFloat, Decoded, FullDecoded};
-use core::num::flt2dec::{round_up, Sign, MAX_SIG_DIGITS};
 use core::num::flt2dec::{
-    to_exact_exp_str, to_exact_fixed_str, to_shortest_exp_str, to_shortest_str,
+    DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, Sign, decode, round_up, to_exact_exp_str,
+    to_exact_fixed_str, to_shortest_exp_str, to_shortest_str,
 };
 use core::num::fmt::{Formatted, Part};
-
-pub use test::Bencher;
+use std::mem::MaybeUninit;
+use std::{fmt, str};
 
 mod estimator;
 mod strategy {
@@ -20,7 +16,7 @@ mod random;
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
         FullDecoded::Finite(decoded) => decoded,
-        full_decoded => panic!("expected finite, got {:?} instead", full_decoded),
+        full_decoded => panic!("expected finite, got {full_decoded:?} instead"),
     }
 }
 
@@ -138,7 +134,7 @@ where
 
     // check exact rounding for zero- and negative-width cases
     let start;
-    if expected[0] >= b'5' {
+    if expected[0] > b'5' {
         try_fixed!(f(&decoded) => &mut buf, expectedk, b"1", expectedk + 1;
                    "zero-width rounding-up mismatch for v={v}: \
                     actual {actual:?}, expected {expected:?}",
@@ -1007,7 +1003,7 @@ where
     assert_eq!(to_string(f, 999.5, Minus, 3), "999.500");
     assert_eq!(to_string(f, 999.5, Minus, 30), "999.500000000000000000000000000000");
 
-    assert_eq!(to_string(f, 0.5, Minus, 0), "1");
+    assert_eq!(to_string(f, 0.5, Minus, 0), "0");
     assert_eq!(to_string(f, 0.5, Minus, 1), "0.5");
     assert_eq!(to_string(f, 0.5, Minus, 2), "0.50");
     assert_eq!(to_string(f, 0.5, Minus, 3), "0.500");

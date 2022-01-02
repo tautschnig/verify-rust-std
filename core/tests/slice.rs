@@ -1,6 +1,8 @@
 use core::cell::Cell;
 use core::cmp::Ordering;
-use core::result::Result::{Err, Ok};
+use core::mem::MaybeUninit;
+use core::num::NonZero;
+use core::slice;
 
 #[test]
 fn test_position() {
@@ -67,13 +69,13 @@ fn test_binary_search() {
     assert_eq!(b.binary_search(&8), Err(5));
 
     let b = [(); usize::MAX];
-    assert_eq!(b.binary_search(&()), Ok(usize::MAX / 2));
+    assert_eq!(b.binary_search(&()), Ok(usize::MAX - 1));
 }
 
 #[test]
 fn test_binary_search_by_overflow() {
     let b = [(); usize::MAX];
-    assert_eq!(b.binary_search_by(|_| Ordering::Equal), Ok(usize::MAX / 2));
+    assert_eq!(b.binary_search_by(|_| Ordering::Equal), Ok(usize::MAX - 1));
     assert_eq!(b.binary_search_by(|_| Ordering::Greater), Err(0));
     assert_eq!(b.binary_search_by(|_| Ordering::Less), Err(usize::MAX));
 }
@@ -85,13 +87,13 @@ fn test_binary_search_implementation_details() {
     let b = [1, 1, 2, 2, 3, 3, 3];
     assert_eq!(b.binary_search(&1), Ok(1));
     assert_eq!(b.binary_search(&2), Ok(3));
-    assert_eq!(b.binary_search(&3), Ok(5));
+    assert_eq!(b.binary_search(&3), Ok(6));
     let b = [1, 1, 1, 1, 1, 3, 3, 3, 3];
     assert_eq!(b.binary_search(&1), Ok(4));
-    assert_eq!(b.binary_search(&3), Ok(7));
+    assert_eq!(b.binary_search(&3), Ok(8));
     let b = [1, 1, 1, 1, 3, 3, 3, 3, 3];
-    assert_eq!(b.binary_search(&1), Ok(2));
-    assert_eq!(b.binary_search(&3), Ok(4));
+    assert_eq!(b.binary_search(&1), Ok(3));
+    assert_eq!(b.binary_search(&3), Ok(8));
 }
 
 #[test]
@@ -132,6 +134,50 @@ fn test_partition_point() {
     assert_eq!(b.partition_point(|&x| x < 6), 4);
     assert_eq!(b.partition_point(|&x| x < 7), 4);
     assert_eq!(b.partition_point(|&x| x < 8), 5);
+}
+
+#[test]
+fn test_iterator_advance_by() {
+    let v = &[0, 1, 2, 3, 4];
+
+    for i in 0..=v.len() {
+        let mut iter = v.iter();
+        assert_eq!(iter.advance_by(i), Ok(()));
+        assert_eq!(iter.as_slice(), &v[i..]);
+    }
+
+    let mut iter = v.iter();
+    assert_eq!(iter.advance_by(v.len() + 1), Err(NonZero::new(1).unwrap()));
+    assert_eq!(iter.as_slice(), &[]);
+
+    let mut iter = v.iter();
+    assert_eq!(iter.advance_by(3), Ok(()));
+    assert_eq!(iter.as_slice(), &v[3..]);
+    assert_eq!(iter.advance_by(2), Ok(()));
+    assert_eq!(iter.as_slice(), &[]);
+    assert_eq!(iter.advance_by(0), Ok(()));
+}
+
+#[test]
+fn test_iterator_advance_back_by() {
+    let v = &[0, 1, 2, 3, 4];
+
+    for i in 0..=v.len() {
+        let mut iter = v.iter();
+        assert_eq!(iter.advance_back_by(i), Ok(()));
+        assert_eq!(iter.as_slice(), &v[..v.len() - i]);
+    }
+
+    let mut iter = v.iter();
+    assert_eq!(iter.advance_back_by(v.len() + 1), Err(NonZero::new(1).unwrap()));
+    assert_eq!(iter.as_slice(), &[]);
+
+    let mut iter = v.iter();
+    assert_eq!(iter.advance_back_by(3), Ok(()));
+    assert_eq!(iter.as_slice(), &v[..v.len() - 3]);
+    assert_eq!(iter.advance_back_by(2), Ok(()));
+    assert_eq!(iter.as_slice(), &[]);
+    assert_eq!(iter.advance_back_by(0), Ok(()));
 }
 
 #[test]
@@ -204,6 +250,40 @@ fn test_chunks_nth() {
     let mut c2 = v2.chunks(3);
     assert_eq!(c2.nth(1).unwrap(), &[3, 4]);
     assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_chunks_next() {
+    let v = [0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks(2);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next().unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[4, 5]);
+    assert_eq!(c.next(), None);
+
+    let v = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut c = v.chunks(3);
+    assert_eq!(c.next().unwrap(), &[0, 1, 2]);
+    assert_eq!(c.next().unwrap(), &[3, 4, 5]);
+    assert_eq!(c.next().unwrap(), &[6, 7]);
+    assert_eq!(c.next(), None);
+}
+
+#[test]
+fn test_chunks_next_back() {
+    let v = [0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks(2);
+    assert_eq!(c.next_back().unwrap(), &[4, 5]);
+    assert_eq!(c.next_back().unwrap(), &[2, 3]);
+    assert_eq!(c.next_back().unwrap(), &[0, 1]);
+    assert_eq!(c.next_back(), None);
+
+    let v = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut c = v.chunks(3);
+    assert_eq!(c.next_back().unwrap(), &[6, 7]);
+    assert_eq!(c.next_back().unwrap(), &[3, 4, 5]);
+    assert_eq!(c.next_back().unwrap(), &[0, 1, 2]);
+    assert_eq!(c.next_back(), None);
 }
 
 #[test]
@@ -327,6 +407,50 @@ fn test_chunks_mut_zip() {
         }
     }
     assert_eq!(v1, [13, 14, 19, 20, 14]);
+}
+
+#[test]
+fn test_chunks_mut_zip_aliasing() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let mut it = v1.chunks_mut(2).zip(v2.chunks(2));
+    let first = it.next().unwrap();
+    let _ = it.next().unwrap();
+    assert_eq!(first, (&mut [0, 1][..], &[6, 7][..]));
+}
+
+#[test]
+fn test_chunks_exact_mut_zip_aliasing() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let mut it = v1.chunks_exact_mut(2).zip(v2.chunks(2));
+    let first = it.next().unwrap();
+    let _ = it.next().unwrap();
+    assert_eq!(first, (&mut [0, 1][..], &[6, 7][..]));
+}
+
+#[test]
+fn test_rchunks_mut_zip_aliasing() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let mut it = v1.rchunks_mut(2).zip(v2.chunks(2));
+    let first = it.next().unwrap();
+    let _ = it.next().unwrap();
+    assert_eq!(first, (&mut [3, 4][..], &[6, 7][..]));
+}
+
+#[test]
+fn test_rchunks_exact_mut_zip_aliasing() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let mut it = v1.rchunks_exact_mut(2).zip(v2.chunks(2));
+    let first = it.next().unwrap();
+    let _ = it.next().unwrap();
+    assert_eq!(first, (&mut [3, 4][..], &[6, 7][..]));
 }
 
 #[test]
@@ -697,6 +821,10 @@ fn test_array_windows_count() {
     let v3: &[i32] = &[];
     let c3 = v3.array_windows::<2>();
     assert_eq!(c3.count(), 0);
+
+    let v4: &[()] = &[(); usize::MAX];
+    let c4 = v4.array_windows::<1>();
+    assert_eq!(c4.count(), usize::MAX);
 }
 
 #[test]
@@ -758,6 +886,40 @@ fn test_rchunks_nth_back() {
     let mut c2 = v2.rchunks(3);
     assert_eq!(c2.nth_back(1).unwrap(), &[2, 3, 4]);
     assert_eq!(c2.next_back(), None);
+}
+
+#[test]
+fn test_rchunks_next() {
+    let v = [0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks(2);
+    assert_eq!(c.next().unwrap(), &[4, 5]);
+    assert_eq!(c.next().unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut c = v.rchunks(3);
+    assert_eq!(c.next().unwrap(), &[5, 6, 7]);
+    assert_eq!(c.next().unwrap(), &[2, 3, 4]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+}
+
+#[test]
+fn test_rchunks_next_back() {
+    let v = [0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks(2);
+    assert_eq!(c.next_back().unwrap(), &[0, 1]);
+    assert_eq!(c.next_back().unwrap(), &[2, 3]);
+    assert_eq!(c.next_back().unwrap(), &[4, 5]);
+    assert_eq!(c.next_back(), None);
+
+    let v = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut c = v.rchunks(3);
+    assert_eq!(c.next_back().unwrap(), &[0, 1]);
+    assert_eq!(c.next_back().unwrap(), &[2, 3, 4]);
+    assert_eq!(c.next_back().unwrap(), &[5, 6, 7]);
+    assert_eq!(c.next_back(), None);
 }
 
 #[test]
@@ -823,6 +985,40 @@ fn test_rchunks_mut_nth_back() {
     let mut c2 = v2.rchunks_mut(3);
     assert_eq!(c2.nth_back(1).unwrap(), &[2, 3, 4]);
     assert_eq!(c2.next_back(), None);
+}
+
+#[test]
+fn test_rchunks_mut_next() {
+    let mut v = [0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks_mut(2);
+    assert_eq!(c.next().unwrap(), &mut [4, 5]);
+    assert_eq!(c.next().unwrap(), &mut [2, 3]);
+    assert_eq!(c.next().unwrap(), &mut [0, 1]);
+    assert_eq!(c.next(), None);
+
+    let mut v = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut c = v.rchunks_mut(3);
+    assert_eq!(c.next().unwrap(), &mut [5, 6, 7]);
+    assert_eq!(c.next().unwrap(), &mut [2, 3, 4]);
+    assert_eq!(c.next().unwrap(), &mut [0, 1]);
+    assert_eq!(c.next(), None);
+}
+
+#[test]
+fn test_rchunks_mut_next_back() {
+    let mut v = [0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks_mut(2);
+    assert_eq!(c.next_back().unwrap(), &mut [0, 1]);
+    assert_eq!(c.next_back().unwrap(), &mut [2, 3]);
+    assert_eq!(c.next_back().unwrap(), &mut [4, 5]);
+    assert_eq!(c.next_back(), None);
+
+    let mut v = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut c = v.rchunks_mut(3);
+    assert_eq!(c.next_back().unwrap(), &mut [0, 1]);
+    assert_eq!(c.next_back().unwrap(), &mut [2, 3, 4]);
+    assert_eq!(c.next_back().unwrap(), &mut [5, 6, 7]);
+    assert_eq!(c.next_back(), None);
 }
 
 #[test]
@@ -996,6 +1192,28 @@ fn test_rchunks_exact_mut_zip() {
 }
 
 #[test]
+fn chunks_mut_are_send_and_sync() {
+    use std::cell::Cell;
+    use std::slice::{ChunksExactMut, ChunksMut, RChunksExactMut, RChunksMut};
+    use std::sync::MutexGuard;
+
+    fn assert_send_and_sync()
+    where
+        ChunksMut<'static, Cell<i32>>: Send,
+        ChunksMut<'static, MutexGuard<'static, u32>>: Sync,
+        ChunksExactMut<'static, Cell<i32>>: Send,
+        ChunksExactMut<'static, MutexGuard<'static, u32>>: Sync,
+        RChunksMut<'static, Cell<i32>>: Send,
+        RChunksMut<'static, MutexGuard<'static, u32>>: Sync,
+        RChunksExactMut<'static, Cell<i32>>: Send,
+        RChunksExactMut<'static, MutexGuard<'static, u32>>: Sync,
+    {
+    }
+
+    assert_send_and_sync();
+}
+
+#[test]
 fn test_windows_count() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
     let c = v.windows(3);
@@ -1008,6 +1226,10 @@ fn test_windows_count() {
     let v3: &[i32] = &[];
     let c3 = v3.windows(2);
     assert_eq!(c3.count(), 0);
+
+    let v4 = &[(); usize::MAX];
+    let c4 = v4.windows(1);
+    assert_eq!(c4.count(), usize::MAX);
 }
 
 #[test]
@@ -1062,7 +1284,6 @@ fn test_windows_zip() {
 }
 
 #[test]
-#[allow(const_err)]
 fn test_iter_ref_consistency() {
     use std::fmt::Debug;
 
@@ -1267,7 +1488,7 @@ mod slice_index {
                 // optional:
                 //
                 // one or more similar inputs for which data[input] succeeds,
-                // and the corresponding output as an array.  This helps validate
+                // and the corresponding output as an array. This helps validate
                 // "critical points" where an input range straddles the boundary
                 // between valid and invalid.
                 // (such as the input `len..len`, which is just barely valid)
@@ -1581,88 +1802,14 @@ fn brute_force_rotate_test_1() {
 
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
-fn sort_unstable() {
-    use core::cmp::Ordering::{Equal, Greater, Less};
-    use core::slice::heapsort;
-    use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
-
-    // Miri is too slow (but still need to `chain` to make the types match)
-    let lens = if cfg!(miri) { (2..20).chain(0..0) } else { (2..25).chain(500..510) };
-    let rounds = if cfg!(miri) { 1 } else { 100 };
-
-    let mut v = [0; 600];
-    let mut tmp = [0; 600];
-    let mut rng = StdRng::from_entropy();
-
-    for len in lens {
-        let v = &mut v[0..len];
-        let tmp = &mut tmp[0..len];
-
-        for &modulus in &[5, 10, 100, 1000] {
-            for _ in 0..rounds {
-                for i in 0..len {
-                    v[i] = rng.gen::<i32>() % modulus;
-                }
-
-                // Sort in default order.
-                tmp.copy_from_slice(v);
-                tmp.sort_unstable();
-                assert!(tmp.windows(2).all(|w| w[0] <= w[1]));
-
-                // Sort in ascending order.
-                tmp.copy_from_slice(v);
-                tmp.sort_unstable_by(|a, b| a.cmp(b));
-                assert!(tmp.windows(2).all(|w| w[0] <= w[1]));
-
-                // Sort in descending order.
-                tmp.copy_from_slice(v);
-                tmp.sort_unstable_by(|a, b| b.cmp(a));
-                assert!(tmp.windows(2).all(|w| w[0] >= w[1]));
-
-                // Test heapsort using `<` operator.
-                tmp.copy_from_slice(v);
-                heapsort(tmp, |a, b| a < b);
-                assert!(tmp.windows(2).all(|w| w[0] <= w[1]));
-
-                // Test heapsort using `>` operator.
-                tmp.copy_from_slice(v);
-                heapsort(tmp, |a, b| a > b);
-                assert!(tmp.windows(2).all(|w| w[0] >= w[1]));
-            }
-        }
-    }
-
-    // Sort using a completely random comparison function.
-    // This will reorder the elements *somehow*, but won't panic.
-    for i in 0..v.len() {
-        v[i] = i as i32;
-    }
-    v.sort_unstable_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
-    v.sort_unstable();
-    for i in 0..v.len() {
-        assert_eq!(v[i], i as i32);
-    }
-
-    // Should not panic.
-    [0i32; 0].sort_unstable();
-    [(); 10].sort_unstable();
-    [(); 100].sort_unstable();
-
-    let mut v = [0xDEADBEEFu64];
-    v.sort_unstable();
-    assert!(v == [0xDEADBEEF]);
-}
-
-#[test]
-#[cfg(not(target_arch = "wasm32"))]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
-    use rand::rngs::StdRng;
-    use rand::seq::SliceRandom;
-    use rand::{Rng, SeedableRng};
 
-    let mut rng = StdRng::from_entropy();
+    use rand::Rng;
+    use rand::seq::SliceRandom;
+
+    let mut rng = crate::test_rng();
 
     for len in (2..21).chain(500..501) {
         let mut orig = vec![0; len];
@@ -1889,9 +2036,9 @@ fn test_align_to_zst() {
 #[test]
 fn test_align_to_non_trivial() {
     #[repr(align(8))]
-    struct U64(u64, u64);
+    struct U64(#[allow(dead_code)] u64, #[allow(dead_code)] u64);
     #[repr(align(8))]
-    struct U64U64U32(u64, u64, u32);
+    struct U64U64U32(#[allow(dead_code)] u64, #[allow(dead_code)] u64, #[allow(dead_code)] u32);
     let data = [
         U64(1, 2),
         U64(3, 4),
@@ -1976,7 +2123,7 @@ fn test_slice_partition_dedup_multiple_ident() {
 #[test]
 fn test_slice_partition_dedup_partialeq() {
     #[derive(Debug)]
-    struct Foo(i32, i32);
+    struct Foo(i32, #[allow(dead_code)] i32);
 
     impl PartialEq for Foo {
         fn eq(&self, other: &Foo) -> bool {
@@ -2057,11 +2204,39 @@ fn test_copy_within_panics_src_out_of_bounds() {
 fn test_is_sorted() {
     let empty: [i32; 0] = [];
 
+    // Tests on integers
     assert!([1, 2, 2, 9].is_sorted());
     assert!(![1, 3, 2].is_sorted());
     assert!([0].is_sorted());
+    assert!([0, 0].is_sorted());
     assert!(empty.is_sorted());
+
+    // Tests on floats
+    assert!([1.0f32, 2.0, 2.0, 9.0].is_sorted());
+    assert!(![1.0f32, 3.0f32, 2.0f32].is_sorted());
+    assert!([0.0f32].is_sorted());
+    assert!([0.0f32, 0.0f32].is_sorted());
+    // Test cases with NaNs
+    assert!([f32::NAN].is_sorted());
+    assert!(![f32::NAN, f32::NAN].is_sorted());
     assert!(![0.0, 1.0, f32::NAN].is_sorted());
+    // Tests from <https://github.com/rust-lang/rust/pull/55045#discussion_r229689884>
+    assert!(![f32::NAN, f32::NAN, f32::NAN].is_sorted());
+    assert!(![1.0, f32::NAN, 2.0].is_sorted());
+    assert!(![2.0, f32::NAN, 1.0].is_sorted());
+    assert!(![2.0, f32::NAN, 1.0, 7.0].is_sorted());
+    assert!(![2.0, f32::NAN, 1.0, 0.0].is_sorted());
+    assert!(![-f32::NAN, -1.0, 0.0, 1.0, f32::NAN].is_sorted());
+    assert!(![f32::NAN, -f32::NAN, -1.0, 0.0, 1.0].is_sorted());
+    assert!(![1.0, f32::NAN, -f32::NAN, -1.0, 0.0].is_sorted());
+    assert!(![0.0, 1.0, f32::NAN, -f32::NAN, -1.0].is_sorted());
+    assert!(![-1.0, 0.0, 1.0, f32::NAN, -f32::NAN].is_sorted());
+
+    // Tests for is_sorted_by
+    assert!(![6, 2, 8, 5, 1, -60, 1337].is_sorted());
+    assert!([6, 2, 8, 5, 1, -60, 1337].is_sorted_by(|_, _| true));
+
+    // Tests for is_sorted_by_key
     assert!([-2, -1, 0, 3].is_sorted());
     assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
     assert!(!["c", "bb", "aaa"].is_sorted());
@@ -2093,4 +2268,353 @@ fn test_slice_run_destructors() {
     }
 
     assert_eq!(x.get(), 1);
+}
+
+#[test]
+fn test_const_from_ref() {
+    const VALUE: &i32 = &1;
+    const SLICE: &[i32] = core::slice::from_ref(VALUE);
+
+    assert!(core::ptr::eq(VALUE, &SLICE[0]))
+}
+
+#[test]
+fn test_slice_fill_with_uninit() {
+    // This should not UB. See #87891
+    let mut a = [MaybeUninit::<u8>::uninit(); 10];
+    a.fill(MaybeUninit::uninit());
+}
+
+#[test]
+fn test_swap() {
+    let mut x = ["a", "b", "c", "d"];
+    x.swap(1, 3);
+    assert_eq!(x, ["a", "d", "c", "b"]);
+    x.swap(0, 3);
+    assert_eq!(x, ["b", "d", "c", "a"]);
+}
+
+mod swap_panics {
+    #[test]
+    #[should_panic(expected = "index out of bounds: the len is 4 but the index is 4")]
+    fn index_a_equals_len() {
+        let mut x = ["a", "b", "c", "d"];
+        x.swap(4, 2);
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds: the len is 4 but the index is 4")]
+    fn index_b_equals_len() {
+        let mut x = ["a", "b", "c", "d"];
+        x.swap(2, 4);
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds: the len is 4 but the index is 5")]
+    fn index_a_greater_than_len() {
+        let mut x = ["a", "b", "c", "d"];
+        x.swap(5, 2);
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds: the len is 4 but the index is 5")]
+    fn index_b_greater_than_len() {
+        let mut x = ["a", "b", "c", "d"];
+        x.swap(2, 5);
+    }
+}
+
+#[test]
+fn slice_split_first_chunk_mut() {
+    let v = &mut [1, 2, 3, 4, 5, 6][..];
+
+    {
+        let (left, right) = v.split_first_chunk_mut::<0>().unwrap();
+        assert_eq!(left, &mut []);
+        assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    }
+
+    {
+        let (left, right) = v.split_first_chunk_mut::<6>().unwrap();
+        assert_eq!(left, &mut [1, 2, 3, 4, 5, 6]);
+        assert_eq!(right, []);
+    }
+
+    {
+        assert!(v.split_first_chunk_mut::<7>().is_none());
+    }
+}
+
+#[test]
+fn slice_split_last_chunk_mut() {
+    let v = &mut [1, 2, 3, 4, 5, 6][..];
+
+    {
+        let (left, right) = v.split_last_chunk_mut::<0>().unwrap();
+        assert_eq!(left, [1, 2, 3, 4, 5, 6]);
+        assert_eq!(right, &mut []);
+    }
+
+    {
+        let (left, right) = v.split_last_chunk_mut::<6>().unwrap();
+        assert_eq!(left, []);
+        assert_eq!(right, &mut [1, 2, 3, 4, 5, 6]);
+    }
+
+    {
+        assert!(v.split_last_chunk_mut::<7>().is_none());
+    }
+}
+
+#[test]
+fn split_as_slice() {
+    let arr = [1, 2, 3, 4, 5, 6];
+    let mut split = arr.split(|v| v % 2 == 0);
+    assert_eq!(split.as_slice(), &[1, 2, 3, 4, 5, 6]);
+    assert!(split.next().is_some());
+    assert_eq!(split.as_slice(), &[3, 4, 5, 6]);
+    assert!(split.next().is_some());
+    assert!(split.next().is_some());
+    assert_eq!(split.as_slice(), &[]);
+}
+
+#[test]
+fn slice_split_once() {
+    let v = &[1, 2, 3, 2, 4][..];
+
+    assert_eq!(v.split_once(|&x| x == 2), Some((&[1][..], &[3, 2, 4][..])));
+    assert_eq!(v.split_once(|&x| x == 1), Some((&[][..], &[2, 3, 2, 4][..])));
+    assert_eq!(v.split_once(|&x| x == 4), Some((&[1, 2, 3, 2][..], &[][..])));
+    assert_eq!(v.split_once(|&x| x == 0), None);
+}
+
+#[test]
+fn slice_rsplit_once() {
+    let v = &[1, 2, 3, 2, 4][..];
+
+    assert_eq!(v.rsplit_once(|&x| x == 2), Some((&[1, 2, 3][..], &[4][..])));
+    assert_eq!(v.rsplit_once(|&x| x == 1), Some((&[][..], &[2, 3, 2, 4][..])));
+    assert_eq!(v.rsplit_once(|&x| x == 4), Some((&[1, 2, 3, 2][..], &[][..])));
+    assert_eq!(v.rsplit_once(|&x| x == 0), None);
+}
+
+macro_rules! take_tests {
+    (slice: &[], $($tts:tt)*) => {
+        take_tests!(ty: &[()], slice: &[], $($tts)*);
+    };
+    (slice: &mut [], $($tts:tt)*) => {
+        take_tests!(ty: &mut [()], slice: &mut [], $($tts)*);
+    };
+    (slice: &$slice:expr, $($tts:tt)*) => {
+        take_tests!(ty: &[_], slice: &$slice, $($tts)*);
+    };
+    (slice: &mut $slice:expr, $($tts:tt)*) => {
+        take_tests!(ty: &mut [_], slice: &mut $slice, $($tts)*);
+    };
+    (ty: $ty:ty, slice: $slice:expr, method: $method:ident, $(($test_name:ident, ($($args:expr),*), $output:expr, $remaining:expr),)*) => {
+        $(
+            #[test]
+            fn $test_name() {
+                let mut slice: $ty = $slice;
+                assert_eq!($output, slice.$method($($args)*));
+                let remaining: $ty = $remaining;
+                assert_eq!(remaining, slice);
+            }
+        )*
+    };
+}
+
+take_tests! {
+    slice: &[0, 1, 2, 3], method: take,
+    (take_in_bounds_range_to, (..1), Some(&[0] as _), &[1, 2, 3]),
+    (take_in_bounds_range_to_inclusive, (..=0), Some(&[0] as _), &[1, 2, 3]),
+    (take_in_bounds_range_from, (2..), Some(&[2, 3] as _), &[0, 1]),
+    (take_oob_range_to, (..5), None, &[0, 1, 2, 3]),
+    (take_oob_range_to_inclusive, (..=4), None, &[0, 1, 2, 3]),
+    (take_oob_range_from, (5..), None, &[0, 1, 2, 3]),
+}
+
+take_tests! {
+    slice: &mut [0, 1, 2, 3], method: take_mut,
+    (take_mut_in_bounds_range_to, (..1), Some(&mut [0] as _), &mut [1, 2, 3]),
+    (take_mut_in_bounds_range_to_inclusive, (..=0), Some(&mut [0] as _), &mut [1, 2, 3]),
+    (take_mut_in_bounds_range_from, (2..), Some(&mut [2, 3] as _), &mut [0, 1]),
+    (take_mut_oob_range_to, (..5), None, &mut [0, 1, 2, 3]),
+    (take_mut_oob_range_to_inclusive, (..=4), None, &mut [0, 1, 2, 3]),
+    (take_mut_oob_range_from, (5..), None, &mut [0, 1, 2, 3]),
+}
+
+take_tests! {
+    slice: &[1, 2], method: take_first,
+    (take_first_nonempty, (), Some(&1), &[2]),
+}
+
+take_tests! {
+    slice: &mut [1, 2], method: take_first_mut,
+    (take_first_mut_nonempty, (), Some(&mut 1), &mut [2]),
+}
+
+take_tests! {
+    slice: &[1, 2], method: take_last,
+    (take_last_nonempty, (), Some(&2), &[1]),
+}
+
+take_tests! {
+    slice: &mut [1, 2], method: take_last_mut,
+    (take_last_mut_nonempty, (), Some(&mut 2), &mut [1]),
+}
+
+take_tests! {
+    slice: &[], method: take_first,
+    (take_first_empty, (), None, &[]),
+}
+
+take_tests! {
+    slice: &mut [], method: take_first_mut,
+    (take_first_mut_empty, (), None, &mut []),
+}
+
+take_tests! {
+    slice: &[], method: take_last,
+    (take_last_empty, (), None, &[]),
+}
+
+take_tests! {
+    slice: &mut [], method: take_last_mut,
+    (take_last_mut_empty, (), None, &mut []),
+}
+
+#[cfg(not(miri))] // unused in Miri
+const EMPTY_MAX: &'static [()] = &[(); usize::MAX];
+
+// can't be a constant due to const mutability rules
+#[cfg(not(miri))] // unused in Miri
+macro_rules! empty_max_mut {
+    () => {
+        &mut [(); usize::MAX] as _
+    };
+}
+
+#[cfg(not(miri))] // Comparing usize::MAX many elements takes forever in Miri (and in rustc without optimizations)
+take_tests! {
+    slice: &[(); usize::MAX], method: take,
+    (take_in_bounds_max_range_to, (..usize::MAX), Some(EMPTY_MAX), &[(); 0]),
+    (take_oob_max_range_to_inclusive, (..=usize::MAX), None, EMPTY_MAX),
+    (take_in_bounds_max_range_from, (usize::MAX..), Some(&[] as _), EMPTY_MAX),
+}
+
+#[cfg(not(miri))] // Comparing usize::MAX many elements takes forever in Miri (and in rustc without optimizations)
+take_tests! {
+    slice: &mut [(); usize::MAX], method: take_mut,
+    (take_mut_in_bounds_max_range_to, (..usize::MAX), Some(empty_max_mut!()), &mut [(); 0]),
+    (take_mut_oob_max_range_to_inclusive, (..=usize::MAX), None, empty_max_mut!()),
+    (take_mut_in_bounds_max_range_from, (usize::MAX..), Some(&mut [] as _), empty_max_mut!()),
+}
+
+#[test]
+fn test_slice_from_ptr_range() {
+    let arr = ["foo".to_owned(), "bar".to_owned()];
+    let range = arr.as_ptr_range();
+    unsafe {
+        assert_eq!(slice::from_ptr_range(range), &arr);
+    }
+
+    let mut arr = [1, 2, 3];
+    let range = arr.as_mut_ptr_range();
+    unsafe {
+        assert_eq!(slice::from_mut_ptr_range(range), &mut [1, 2, 3]);
+    }
+
+    let arr: [Vec<String>; 0] = [];
+    let range = arr.as_ptr_range();
+    unsafe {
+        assert_eq!(slice::from_ptr_range(range), &arr);
+    }
+}
+
+#[test]
+#[should_panic = "slice len overflow"]
+fn test_flatten_size_overflow() {
+    let x = &[[(); usize::MAX]; 2][..];
+    let _ = x.as_flattened();
+}
+
+#[test]
+#[should_panic = "slice len overflow"]
+fn test_flatten_mut_size_overflow() {
+    let x = &mut [[(); usize::MAX]; 2][..];
+    let _ = x.as_flattened_mut();
+}
+
+#[test]
+fn test_get_many_mut_normal_2() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [a, b] = v.get_many_mut([3, 0]).unwrap();
+    *a += 10;
+    *b += 100;
+    assert_eq!(v, vec![101, 2, 3, 14, 5]);
+}
+
+#[test]
+fn test_get_many_mut_normal_3() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [a, b, c] = v.get_many_mut([0, 4, 2]).unwrap();
+    *a += 10;
+    *b += 100;
+    *c += 1000;
+    assert_eq!(v, vec![11, 2, 1003, 4, 105]);
+}
+
+#[test]
+fn test_get_many_mut_empty() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [] = v.get_many_mut([]).unwrap();
+    assert_eq!(v, vec![1, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_get_many_mut_single_first() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [a] = v.get_many_mut([0]).unwrap();
+    *a += 10;
+    assert_eq!(v, vec![11, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_get_many_mut_single_last() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [a] = v.get_many_mut([4]).unwrap();
+    *a += 10;
+    assert_eq!(v, vec![1, 2, 3, 4, 15]);
+}
+
+#[test]
+fn test_get_many_mut_oob_nonempty() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    assert!(v.get_many_mut([5]).is_err());
+}
+
+#[test]
+fn test_get_many_mut_oob_empty() {
+    let mut v: Vec<i32> = vec![];
+    assert!(v.get_many_mut([0]).is_err());
+}
+
+#[test]
+fn test_get_many_mut_duplicate() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    assert!(v.get_many_mut([1, 3, 3, 4]).is_err());
+}
+
+#[test]
+fn test_slice_from_raw_parts_in_const() {
+    static FANCY: i32 = 4;
+    static FANCY_SLICE: &[i32] = unsafe { std::slice::from_raw_parts(&FANCY, 1) };
+    assert_eq!(FANCY_SLICE.as_ptr(), std::ptr::addr_of!(FANCY));
+    assert_eq!(FANCY_SLICE.len(), 1);
+
+    const EMPTY_SLICE: &[i32] =
+        unsafe { std::slice::from_raw_parts(std::ptr::without_provenance(123456), 0) };
+    assert_eq!(EMPTY_SLICE.as_ptr().addr(), 123456);
+    assert_eq!(EMPTY_SLICE.len(), 0);
 }

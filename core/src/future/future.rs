@@ -1,13 +1,12 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
-use crate::marker::Unpin;
 use crate::ops;
 use crate::pin::Pin;
 use crate::task::{Context, Poll};
 
-/// A future represents an asynchronous computation.
+/// A future represents an asynchronous computation obtained by use of [`async`].
 ///
-/// A future is a value that may not have finished computing yet. This kind of
+/// A future is a value that might not have finished computing yet. This kind of
 /// "asynchronous value" makes it possible for a thread to continue doing useful
 /// work while it waits for the value to become available.
 ///
@@ -23,18 +22,24 @@ use crate::task::{Context, Poll};
 /// When using a future, you generally won't call `poll` directly, but instead
 /// `.await` the value.
 ///
+/// [`async`]: ../../std/keyword.async.html
 /// [`Waker`]: crate::task::Waker
 #[doc(notable_trait)]
+#[cfg_attr(not(bootstrap), doc(search_unbox))]
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 #[stable(feature = "futures_api", since = "1.36.0")]
 #[lang = "future_trait"]
-#[rustc_on_unimplemented(label = "`{Self}` is not a future", message = "`{Self}` is not a future")]
+#[diagnostic::on_unimplemented(
+    label = "`{Self}` is not a future",
+    message = "`{Self}` is not a future"
+)]
 pub trait Future {
     /// The type of value produced on completion.
     #[stable(feature = "futures_api", since = "1.36.0")]
+    #[lang = "future_output"]
     type Output;
 
-    /// Attempt to resolve the future to a final value, registering
+    /// Attempts to resolve the future to a final value, registering
     /// the current task for wakeup if the value is not yet available.
     ///
     /// # Return value
@@ -77,7 +82,7 @@ pub trait Future {
     /// An implementation of `poll` should strive to return quickly, and should
     /// not block. Returning quickly prevents unnecessarily clogging up
     /// threads or event loops. If it is known ahead of time that a call to
-    /// `poll` may end up taking awhile, the work should be offloaded to a
+    /// `poll` may end up taking a while, the work should be offloaded to a
     /// thread pool (or something similar) to ensure that `poll` can return
     /// quickly.
     ///

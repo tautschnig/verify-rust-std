@@ -1,9 +1,12 @@
 use crate::error::Error;
 use crate::fmt;
+#[cfg(panic = "unwind")]
 use crate::sync::atomic::{AtomicBool, Ordering};
+#[cfg(panic = "unwind")]
 use crate::thread;
 
 pub struct Flag {
+    #[cfg(panic = "unwind")]
     failed: AtomicBool,
 }
 
@@ -19,17 +22,32 @@ pub struct Flag {
 // all cases.
 
 impl Flag {
+    #[inline]
     pub const fn new() -> Flag {
-        Flag { failed: AtomicBool::new(false) }
+        Flag {
+            #[cfg(panic = "unwind")]
+            failed: AtomicBool::new(false),
+        }
     }
 
+    /// Checks the flag for an unguarded borrow, where we only care about existing poison.
     #[inline]
-    pub fn borrow(&self) -> LockResult<Guard> {
-        let ret = Guard { panicking: thread::panicking() };
+    pub fn borrow(&self) -> LockResult<()> {
+        if self.get() { Err(PoisonError::new(())) } else { Ok(()) }
+    }
+
+    /// Checks the flag for a guarded borrow, where we may also set poison when `done`.
+    #[inline]
+    pub fn guard(&self) -> LockResult<Guard> {
+        let ret = Guard {
+            #[cfg(panic = "unwind")]
+            panicking: thread::panicking(),
+        };
         if self.get() { Err(PoisonError::new(ret)) } else { Ok(ret) }
     }
 
     #[inline]
+    #[cfg(panic = "unwind")]
     pub fn done(&self, guard: &Guard) {
         if !guard.panicking && thread::panicking() {
             self.failed.store(true, Ordering::Relaxed);
@@ -37,12 +55,31 @@ impl Flag {
     }
 
     #[inline]
+    #[cfg(not(panic = "unwind"))]
+    pub fn done(&self, _guard: &Guard) {}
+
+    #[inline]
+    #[cfg(panic = "unwind")]
     pub fn get(&self) -> bool {
         self.failed.load(Ordering::Relaxed)
     }
+
+    #[inline(always)]
+    #[cfg(not(panic = "unwind"))]
+    pub fn get(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    pub fn clear(&self) {
+        #[cfg(panic = "unwind")]
+        self.failed.store(false, Ordering::Relaxed)
+    }
 }
 
+#[derive(Clone)]
 pub struct Guard {
+    #[cfg(panic = "unwind")]
     panicking: bool,
 }
 
@@ -73,7 +110,7 @@ pub struct Guard {
 ///     Ok(_) => unreachable!(),
 ///     Err(p_err) => {
 ///         let data = p_err.get_ref();
-///         println!("recovered: {}", data);
+///         println!("recovered: {data}");
 ///     }
 /// };
 /// ```
@@ -82,6 +119,8 @@ pub struct Guard {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PoisonError<T> {
     guard: T,
+    #[cfg(not(panic = "unwind"))]
+    _never: !,
 }
 
 /// An enumeration of possible errors associated with a [`TryLockResult`] which
@@ -120,7 +159,7 @@ pub type LockResult<Guard> = Result<Guard, PoisonError<Guard>>;
 /// A type alias for the result of a nonblocking locking method.
 ///
 /// For more information, see [`LockResult`]. A `TryLockResult` doesn't
-/// necessarily hold the associated guard in the [`Err`] type as the lock may not
+/// necessarily hold the associated guard in the [`Err`] type as the lock might not
 /// have been acquired for other reasons.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type TryLockResult<Guard> = Result<Guard, TryLockError<Guard>>;
@@ -152,9 +191,25 @@ impl<T> PoisonError<T> {
     ///
     /// This is generally created by methods like [`Mutex::lock`](crate::sync::Mutex::lock)
     /// or [`RwLock::read`](crate::sync::RwLock::read).
+    ///
+    /// This method may panic if std was built with `panic="abort"`.
+    #[cfg(panic = "unwind")]
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn new(guard: T) -> PoisonError<T> {
         PoisonError { guard }
+    }
+
+    /// Creates a `PoisonError`.
+    ///
+    /// This is generally created by methods like [`Mutex::lock`](crate::sync::Mutex::lock)
+    /// or [`RwLock::read`](crate::sync::RwLock::read).
+    ///
+    /// This method may panic if std was built with `panic="abort"`.
+    #[cfg(not(panic = "unwind"))]
+    #[stable(feature = "sync_poison", since = "1.2.0")]
+    #[track_caller]
+    pub fn new(_guard: T) -> PoisonError<T> {
+        panic!("PoisonError created in a libstd built with panic=\"abort\"")
     }
 
     /// Consumes this error indicating that a lock is poisoned, returning the
@@ -212,7 +267,10 @@ impl<T> From<PoisonError<T>> for TryLockError<T> {
 impl<T> fmt::Debug for TryLockError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
+            #[cfg(panic = "unwind")]
             TryLockError::Poisoned(..) => "Poisoned(..)".fmt(f),
+            #[cfg(not(panic = "unwind"))]
+            TryLockError::Poisoned(ref p) => match p._never {},
             TryLockError::WouldBlock => "WouldBlock".fmt(f),
         }
     }
@@ -222,7 +280,10 @@ impl<T> fmt::Debug for TryLockError<T> {
 impl<T> fmt::Display for TryLockError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
+            #[cfg(panic = "unwind")]
             TryLockError::Poisoned(..) => "poisoned lock: another task failed inside",
+            #[cfg(not(panic = "unwind"))]
+            TryLockError::Poisoned(ref p) => match p._never {},
             TryLockError::WouldBlock => "try_lock failed because the operation would block",
         }
         .fmt(f)
@@ -234,7 +295,10 @@ impl<T> Error for TryLockError<T> {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
         match *self {
+            #[cfg(panic = "unwind")]
             TryLockError::Poisoned(ref p) => p.description(),
+            #[cfg(not(panic = "unwind"))]
+            TryLockError::Poisoned(ref p) => match p._never {},
             TryLockError::WouldBlock => "try_lock failed because the operation would block",
         }
     }
@@ -242,7 +306,10 @@ impl<T> Error for TryLockError<T> {
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn Error> {
         match *self {
+            #[cfg(panic = "unwind")]
             TryLockError::Poisoned(ref p) => Some(p),
+            #[cfg(not(panic = "unwind"))]
+            TryLockError::Poisoned(ref p) => match p._never {},
             _ => None,
         }
     }
@@ -254,6 +321,7 @@ where
 {
     match result {
         Ok(t) => Ok(f(t)),
+        #[cfg(panic = "unwind")]
         Err(PoisonError { guard }) => Err(PoisonError::new(f(guard))),
     }
 }
