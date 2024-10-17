@@ -177,9 +177,9 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 
 #[cfg(not(test))]
 impl Global {
+    #[requires(layout.size() == 0 || layout.align() != 0)]
     #[inline]
     fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
-        #[requires(layout.size() == 0 || layout.align() != 0)]
         match layout.size() {
             0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
             // SAFETY: `layout` is non-zero in size,
