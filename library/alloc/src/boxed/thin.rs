@@ -447,9 +447,14 @@ impl<T: ?Sized + Error> Error for ThinBox<T> {
 mod verify {
     use super::*;
 
-    // fn drop(&mut self)
-    #[kani::proof_for_contract(impl<T::drop)]
+    // unsafe fn drop<T: ?Sized>(&self, value: *mut T)
+    #[kani::proof_for_contract(WithHeader<T>::drop)]
     pub fn check_drop() {
-        let _ = drop(kani::any());
+        let w = WithHeader::new(kani::any::<usize>(), kani::any::<usize>());
+        let mut x : usize = kani::any();
+        let xptr = &mut x;
+        unsafe {
+            let _ = w.drop(xptr);
+        }
     }
 }
