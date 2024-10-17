@@ -143,6 +143,11 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use safety::requires;
+#[cfg(kani)]
+#[unstable(feature="kani", issue="none")]
+use core::kani;
+
 use core::alloc::Allocator;
 use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen};
 use core::mem::{self, swap, ManuallyDrop};
@@ -672,6 +677,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
+    #[requires(pos < self.len())]
     unsafe fn sift_up(&mut self, start: usize, pos: usize) -> usize {
         // Take out the value at `pos` and create a hole.
         // SAFETY: The caller guarantees that pos < self.len()
@@ -701,6 +707,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < end <= self.len()`.
+    #[requires(pos < end && end <= self.len())]
     unsafe fn sift_down_range(&mut self, pos: usize, end: usize) {
         // SAFETY: The caller guarantees that pos < end <= self.len().
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
@@ -741,6 +748,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
+    #[requires(pos < self.len())]
     unsafe fn sift_down(&mut self, pos: usize) {
         let len = self.len();
         // SAFETY: pos < len is guaranteed by the caller and
@@ -757,6 +765,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
+    #[requires(pos < self.len())]
     unsafe fn sift_down_to_bottom(&mut self, mut pos: usize) {
         let end = self.len();
         let start = pos;
@@ -1895,5 +1904,39 @@ impl<'a, T: 'a + Ord + Copy, A: Allocator> Extend<&'a T> for BinaryHeap<T, A> {
     #[inline]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
+    }
+}
+
+#[cfg(kani)]
+#[unstable(feature="kani", issue="none")]
+mod verify {
+    use super::*;
+
+    // unsafe fn sift_up(&mut self, start: usize, pos: usize) -> usize
+    #[kani::proof_for_contract(impl<T::sift_up)]
+    pub fn check_sift_up() {
+        let obj : impl<T = kani::any();
+        let _ = obj.sift_up(kani::any(), kani::any());
+    }
+
+    // unsafe fn sift_down_range(&mut self, pos: usize, end: usize)
+    #[kani::proof_for_contract(impl<T::sift_down_range)]
+    pub fn check_sift_down_range() {
+        let obj : impl<T = kani::any();
+        let _ = obj.sift_down_range(kani::any(), kani::any());
+    }
+
+    // unsafe fn sift_down(&mut self, pos: usize)
+    #[kani::proof_for_contract(impl<T::sift_down)]
+    pub fn check_sift_down() {
+        let obj : impl<T = kani::any();
+        let _ = obj.sift_down(kani::any());
+    }
+
+    // unsafe fn sift_down_to_bottom(&mut self, mut pos: usize)
+    #[kani::proof_for_contract(impl<T::sift_down_to_bottom)]
+    pub fn check_sift_down_to_bottom() {
+        let obj : impl<T = kani::any();
+        let _ = obj.sift_down_to_bottom(kani::any());
     }
 }
