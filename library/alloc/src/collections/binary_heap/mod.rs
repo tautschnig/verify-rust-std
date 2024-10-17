@@ -1913,30 +1913,46 @@ mod verify {
     use super::*;
 
     // unsafe fn sift_up(&mut self, start: usize, pos: usize) -> usize
-    #[kani::proof_for_contract(impl<T::sift_up)]
+    #[kani::proof_for_contract(BinaryHeap<T, A>::sift_up)]
     pub fn check_sift_up() {
-        let obj : impl<T = kani::any();
-        let _ = obj.sift_up(kani::any(), kani::any());
+        // TODO: this isn't exactly an arbitrary heap
+        let mut heap = BinaryHeap::new_in(Global);
+        heap.push(kani::any::<usize>());
+        unsafe {
+            let _ = heap.sift_up(kani::any(), kani::any());
+        }
     }
 
     // unsafe fn sift_down_range(&mut self, pos: usize, end: usize)
-    #[kani::proof_for_contract(impl<T::sift_down_range)]
+    #[kani::proof_for_contract(BinaryHeap<T, A>::sift_down_range)]
     pub fn check_sift_down_range() {
-        let obj : impl<T = kani::any();
-        let _ = obj.sift_down_range(kani::any(), kani::any());
+        // TODO: this isn't exactly an arbitrary heap
+        let mut heap = BinaryHeap::new_in(Global);
+        heap.push(kani::any::<usize>());
+        unsafe {
+            let _ = heap.sift_down_range(kani::any(), kani::any());
+        }
     }
 
     // unsafe fn sift_down(&mut self, pos: usize)
-    #[kani::proof_for_contract(impl<T::sift_down)]
+    #[kani::proof_for_contract(BinaryHeap<T, A>::sift_down)]
     pub fn check_sift_down() {
-        let obj : impl<T = kani::any();
-        let _ = obj.sift_down(kani::any());
+        // TODO: this isn't exactly an arbitrary heap
+        let mut heap = BinaryHeap::new_in(Global);
+        heap.push(kani::any::<usize>());
+        unsafe {
+            let _ = heap.sift_down(kani::any());
+        }
     }
 
     // unsafe fn sift_down_to_bottom(&mut self, mut pos: usize)
-    #[kani::proof_for_contract(impl<T::sift_down_to_bottom)]
+    #[kani::proof_for_contract(BinaryHeap<T, A>::sift_down_to_bottom)]
     pub fn check_sift_down_to_bottom() {
-        let obj : impl<T = kani::any();
-        let _ = obj.sift_down_to_bottom(kani::any());
+        // TODO: this isn't exactly an arbitrary heap
+        let mut heap = BinaryHeap::new_in(Global);
+        heap.push(kani::any::<usize>());
+        unsafe {
+            let _ = heap.sift_down_to_bottom(kani::any());
+        }
     }
 }
