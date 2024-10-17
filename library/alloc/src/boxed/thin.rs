@@ -6,6 +6,7 @@ use safety::requires;
 #[cfg(kani)]
 #[unstable(feature="kani", issue="none")]
 use core::kani;
+use core::ub_checks;
 
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
@@ -366,9 +367,10 @@ impl<H> WithHeader<H> {
     }
 
     // Safety:
-    #[requires(value.is_null() || value.is_aligned())]
     // - Assumes that either `value` can be dereferenced, or is the
     //   `NonNull::dangling()` we use when both `T` and `H` are ZSTs.
+    #[requires((mem::size_of_val_raw(value) == 0 && size_of::<H>() == 0) ||
+        ub_checks::can_dereference(value))]
     unsafe fn drop<T: ?Sized>(&self, value: *mut T) {
         struct DropGuard<H> {
             ptr: NonNull<u8>,
