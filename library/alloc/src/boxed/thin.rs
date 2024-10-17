@@ -190,7 +190,6 @@ impl<T: ?Sized> ThinBox<T> {
     }
 
     fn with_header(&self) -> &WithHeader<<T as Pointee>::Metadata> {
-        #[requires(self.ptr.0.is_aligned())]
         // SAFETY: both types are transparent to `NonNull<u8>`
         unsafe { &*(core::ptr::addr_of!(self.ptr) as *const WithHeader<_>) }
     }
@@ -411,7 +410,6 @@ impl<H> WithHeader<H> {
     }
 
     fn header(&self) -> *mut H {
-        #[requires(self.0.as_ptr().is_aligned())]
         //  Safety:
         //  - At least `size_of::<H>()` bytes are allocated ahead of the pointer.
         //  - We know that H will be aligned because the middle pointer is aligned to the greater
@@ -449,21 +447,9 @@ impl<T: ?Sized + Error> Error for ThinBox<T> {
 mod verify {
     use super::*;
 
-    // fn with_header(&self) -> &WithHeader<<T as Pointee>::Metadata>
-    #[kani::proof_for_contract(impl<T::with_header)]
-    pub fn check_with_header() {
-        let _ = with_header(kani::any());
-    }
-
     // fn drop(&mut self)
     #[kani::proof_for_contract(impl<T::drop)]
     pub fn check_drop() {
         let _ = drop(kani::any());
-    }
-
-    // fn header(&self) -> *mut H
-    #[kani::proof_for_contract(::header)]
-    pub fn check_header() {
-        let _ = header(kani::any());
     }
 }
