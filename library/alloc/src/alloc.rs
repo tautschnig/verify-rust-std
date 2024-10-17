@@ -6,13 +6,14 @@
 #[doc(inline)]
 pub use core::alloc::*;
 #[cfg(not(test))]
-use safety::requires;
-#[cfg(kani)]
-use crate::kani;
-
 use core::hint;
 #[cfg(not(test))]
 use core::ptr::{self, NonNull};
+
+use safety::requires;
+#[cfg(kani)]
+#[unstable(feature="kani", issue="none")]
+use core::kani;
 
 #[cfg(test)]
 mod tests;
