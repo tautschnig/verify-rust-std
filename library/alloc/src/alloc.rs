@@ -6,6 +6,10 @@
 #[doc(inline)]
 pub use core::alloc::*;
 #[cfg(not(test))]
+use safety::requires;
+#[cfg(kani)]
+use crate::kani;
+
 use core::hint;
 #[cfg(not(test))]
 use core::ptr::{self, NonNull};
@@ -174,6 +178,7 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 impl Global {
     #[inline]
     fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
+        #[requires(layout.size() == 0 || layout.align() != 0)]
         match layout.size() {
             0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
             // SAFETY: `layout` is non-zero in size,
@@ -186,6 +191,10 @@ impl Global {
     }
 
     // SAFETY: Same as `Allocator::grow`
+    #[requires(new_layout.size() >= old_layout.size())]
+    #[requires(old_layout.size() == 0 || old_layout.align() != 0)]
+    #[requires(new_layout.size() == 0 || new_layout.align() != 0)]
+    #[requires(ptr.as_ptr() as usize % old_layout.align() == 0)]
     #[inline]
     unsafe fn grow_impl(
         &self,
@@ -247,6 +256,8 @@ unsafe impl Allocator for Global {
     }
 
     #[inline]
+    #[requires(layout.size() == 0 || layout.align() != 0)]
+    #[requires(ptr.as_ptr() as usize % layout.align() == 0)]
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         if layout.size() != 0 {
             // SAFETY: `layout` is non-zero in size,
@@ -256,6 +267,10 @@ unsafe impl Allocator for Global {
     }
 
     #[inline]
+    #[requires(new_layout.size() >= old_layout.size())]
+    #[requires(old_layout.size() == 0 || old_layout.align() != 0)]
+    #[requires(new_layout.size() == 0 || new_layout.align() != 0)]
+    #[requires(ptr.as_ptr() as usize % old_layout.align() == 0)]
     unsafe fn grow(
         &self,
         ptr: NonNull<u8>,
@@ -267,6 +282,10 @@ unsafe impl Allocator for Global {
     }
 
     #[inline]
+    #[requires(new_layout.size() >= old_layout.size())]
+    #[requires(old_layout.size() == 0 || old_layout.align() != 0)]
+    #[requires(new_layout.size() == 0 || new_layout.align() != 0)]
+    #[requires(ptr.as_ptr() as usize % old_layout.align() == 0)]
     unsafe fn grow_zeroed(
         &self,
         ptr: NonNull<u8>,
@@ -278,6 +297,10 @@ unsafe impl Allocator for Global {
     }
 
     #[inline]
+    #[requires(new_layout.size() <= old_layout.size())]
+    #[requires(old_layout.size() == 0 || old_layout.align() != 0)]
+    #[requires(new_layout.size() == 0 || new_layout.align() != 0)]
+    #[requires(ptr.as_ptr() as usize % old_layout.align() == 0)]
     unsafe fn shrink(
         &self,
         ptr: NonNull<u8>,
@@ -421,5 +444,53 @@ pub mod __alloc_error_handler {
                 /* force_no_backtrace */ false,
             )
         }
+    }
+}
+
+#[cfg(kani)]
+#[unstable(feature="kani", issue="none")]
+mod verify {
+    use super::*;
+
+    // fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError>
+    #[kani::proof_for_contract(Global::alloc_impl)]
+    pub fn check_alloc_impl() {
+        let obj : Global = kani::any();
+        let _ = obj.alloc_impl(kani::any());
+    }
+
+    // unsafe fn grow_impl(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError>
+    #[kani::proof_for_contract(Global::grow_impl)]
+    pub fn check_grow_impl() {
+        let obj : Global = kani::any();
+        let _ = obj.grow_impl(kani::any());
+    }
+
+    // unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout)
+    #[kani::proof_for_contract(Allocator::deallocate)]
+    pub fn check_deallocate() {
+        let obj : Allocator = kani::any();
+        let _ = obj.deallocate(kani::any());
+    }
+
+    // unsafe fn grow(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError>
+    #[kani::proof_for_contract(Allocator::grow)]
+    pub fn check_grow() {
+        let obj : Allocator = kani::any();
+        let _ = obj.grow(kani::any());
+    }
+
+    // unsafe fn grow_zeroed(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError>
+    #[kani::proof_for_contract(Allocator::grow_zeroed)]
+    pub fn check_grow_zeroed() {
+        let obj : Allocator = kani::any();
+        let _ = obj.grow_zeroed(kani::any());
+    }
+
+    // unsafe fn shrink(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError>
+    #[kani::proof_for_contract(Allocator::shrink)]
+    pub fn check_shrink() {
+        let obj : Allocator = kani::any();
+        let _ = obj.shrink(kani::any());
     }
 }
