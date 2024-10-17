@@ -2,6 +2,11 @@
 //! <https://github.com/matthieu-m/rfc2580/blob/b58d1d3cba0d4b5e859d3617ea2d0943aaa31329/examples/thin.rs>
 //! by matthieu-m
 
+use safety::requires;
+#[cfg(kani)]
+#[unstable(feature="kani", issue="none")]
+use core::kani;
+
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
 #[cfg(not(no_global_oom_handling))]
@@ -185,6 +190,7 @@ impl<T: ?Sized> ThinBox<T> {
     }
 
     fn with_header(&self) -> &WithHeader<<T as Pointee>::Metadata> {
+        #[requires(self.ptr.0.is_aligned())]
         // SAFETY: both types are transparent to `NonNull<u8>`
         unsafe { &*(core::ptr::addr_of!(self.ptr) as *const WithHeader<_>) }
     }
@@ -361,6 +367,7 @@ impl<H> WithHeader<H> {
     }
 
     // Safety:
+    #[requires(value.is_null() || value.is_aligned())]
     // - Assumes that either `value` can be dereferenced, or is the
     //   `NonNull::dangling()` we use when both `T` and `H` are ZSTs.
     unsafe fn drop<T: ?Sized>(&self, value: *mut T) {
@@ -404,6 +411,7 @@ impl<H> WithHeader<H> {
     }
 
     fn header(&self) -> *mut H {
+        #[requires(self.0.as_ptr().is_aligned())]
         //  Safety:
         //  - At least `size_of::<H>()` bytes are allocated ahead of the pointer.
         //  - We know that H will be aligned because the middle pointer is aligned to the greater
@@ -433,5 +441,29 @@ impl<H> WithHeader<H> {
 impl<T: ?Sized + Error> Error for ThinBox<T> {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         self.deref().source()
+    }
+}
+
+#[cfg(kani)]
+#[unstable(feature="kani", issue="none")]
+mod verify {
+    use super::*;
+
+    // fn with_header(&self) -> &WithHeader<<T as Pointee>::Metadata>
+    #[kani::proof_for_contract(impl<T::with_header)]
+    pub fn check_with_header() {
+        let _ = with_header(kani::any());
+    }
+
+    // fn drop(&mut self)
+    #[kani::proof_for_contract(impl<T::drop)]
+    pub fn check_drop() {
+        let _ = drop(kani::any());
+    }
+
+    // fn header(&self) -> *mut H
+    #[kani::proof_for_contract(::header)]
+    pub fn check_header() {
+        let _ = header(kani::any());
     }
 }
