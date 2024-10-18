@@ -6,7 +6,10 @@ use safety::requires;
 #[cfg(kani)]
 #[unstable(feature="kani", issue="none")]
 use core::kani;
+#[cfg(kani)]
 use core::ub_checks;
+#[cfg(kani)]
+use crate::boxed::Box;
 
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
@@ -370,7 +373,7 @@ impl<H> WithHeader<H> {
     // - Assumes that either `value` can be dereferenced, or is the
     //   `NonNull::dangling()` we use when both `T` and `H` are ZSTs.
     #[requires((mem::size_of_val_raw(value) == 0 && size_of::<H>() == 0) ||
-        ub_checks::can_dereference(value))]
+        ub_checks::can_dereference(value as *const u8))]
     unsafe fn drop<T: ?Sized>(&self, value: *mut T) {
         struct DropGuard<H> {
             ptr: NonNull<u8>,
@@ -452,9 +455,11 @@ mod verify {
     // unsafe fn drop<T: ?Sized>(&self, value: *mut T)
     #[kani::proof_for_contract(WithHeader<T>::drop)]
     pub fn check_drop() {
-        let w = WithHeader::new(kani::any::<usize>(), kani::any::<usize>());
-        let mut x : usize = kani::any();
-        let xptr = &mut x;
+        let v = Box::<usize>::into_raw(Box::new(kani::any::<usize>()));
+        let w = WithHeader::new(kani::any::<usize>(), v);
+        // TODO: this harness is not the most generic possible as we are currently unable to
+        // express the precondition that the pointer is heap-allocated.
+        let xptr = Box::<usize>::into_raw(Box::new(kani::any::<usize>()));
         unsafe {
             let _ = w.drop(xptr);
         }
