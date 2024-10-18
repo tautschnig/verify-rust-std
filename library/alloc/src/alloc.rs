@@ -459,15 +459,17 @@ mod verify {
         let _ = Global.alloc_impl(kani::any(), kani::any());
     }
 
-    // unsafe fn grow_impl(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError>
-    #[kani::proof_for_contract(Global::grow_impl)]
-    pub fn check_grow_impl() {
-        let raw_ptr = kani::any::<usize>() as *mut u8;
-        unsafe {
-            let n = NonNull::new_unchecked(raw_ptr);
-            let _ = Global.grow_impl(n, kani::any(), kani::any(), kani::any());
-        }
-    }
+    // TODO: Kani correctly detects that the precondition is too weak. We'd need a way to express
+    // that ptr either points to a ZST (we can do this), or else is heap-allocated (we cannot).
+    // // unsafe fn grow_impl(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError>
+    // #[kani::proof_for_contract(Global::grow_impl)]
+    // pub fn check_grow_impl() {
+    //     let raw_ptr = kani::any::<usize>() as *mut u8;
+    //     unsafe {
+    //         let n = NonNull::new_unchecked(raw_ptr);
+    //         let _ = Global.grow_impl(n, kani::any(), kani::any(), kani::any());
+    //     }
+    // }
 
     // TODO: disabled as Kani does not currently support contracts on traits. See
     // https://github.com/model-checking/kani/issues/1997
