@@ -10,7 +10,7 @@ use core::hint;
 #[cfg(not(test))]
 use core::ptr::{self, NonNull};
 
-use safety::requires;
+use safety::{ensures,requires};
 #[cfg(kani)]
 #[unstable(feature="kani", issue="none")]
 use core::kani;
@@ -177,8 +177,8 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 
 #[cfg(not(test))]
 impl Global {
-    #[requires(layout.size() == 0 || layout.align() != 0)]
     #[inline]
+    #[ensures(|ret| layout.size() != 0 || ret.is_ok())]
     fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
             0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
