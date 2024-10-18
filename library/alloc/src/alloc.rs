@@ -469,47 +469,51 @@ mod verify {
         }
     }
 
-    // unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout)
-    #[kani::proof_for_contract(Allocator::deallocate)]
-    pub fn check_deallocate() {
-        let obj : &dyn Allocator = &Global;
-        let raw_ptr = kani::any::<usize>() as *mut u8;
-        unsafe {
-            let n = NonNull::new_unchecked(raw_ptr);
-            let _ = obj.deallocate(n, kani::any());
-        }
-    }
+    // TODO: disabled as Kani does not currently support contracts on traits
+    // // unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout)
+    // #[kani::proof_for_contract(Allocator::deallocate)]
+    // pub fn check_deallocate() {
+    //     let obj : &dyn Allocator = &Global;
+    //     let raw_ptr = kani::any::<usize>() as *mut u8;
+    //     unsafe {
+    //         let n = NonNull::new_unchecked(raw_ptr);
+    //         let _ = obj.deallocate(n, kani::any());
+    //     }
+    // }
 
-    // unsafe fn grow(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError>
-    #[kani::proof_for_contract(Allocator::grow)]
-    pub fn check_grow() {
-        let obj : &dyn Allocator = &Global;
-        let raw_ptr = kani::any::<usize>() as *mut u8;
-        unsafe {
-            let n = NonNull::new_unchecked(raw_ptr);
-            let _ = obj.grow(n, kani::any(), kani::any());
-        }
-    }
+    // TODO: disabled as Kani does not currently support contracts on traits
+    // // unsafe fn grow(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError>
+    // #[kani::proof_for_contract(Allocator::grow)]
+    // pub fn check_grow() {
+    //     let obj : &dyn Allocator = &Global;
+    //     let raw_ptr = kani::any::<usize>() as *mut u8;
+    //     unsafe {
+    //         let n = NonNull::new_unchecked(raw_ptr);
+    //         let _ = obj.grow(n, kani::any(), kani::any());
+    //     }
+    // }
 
-    // unsafe fn grow_zeroed(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError>
-    #[kani::proof_for_contract(Allocator::grow_zeroed)]
-    pub fn check_grow_zeroed() {
-        let obj : &dyn Allocator = &Global;
-        let raw_ptr = kani::any::<usize>() as *mut u8;
-        unsafe {
-            let n = NonNull::new_unchecked(raw_ptr);
-            let _ = obj.grow_zeroed(n, kani::any(), kani::any());
-        }
-    }
+    // TODO: disabled as Kani does not currently support contracts on traits
+    // // unsafe fn grow_zeroed(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError>
+    // #[kani::proof_for_contract(Allocator::grow_zeroed)]
+    // pub fn check_grow_zeroed() {
+    //     let obj : &dyn Allocator = &Global;
+    //     let raw_ptr = kani::any::<usize>() as *mut u8;
+    //     unsafe {
+    //         let n = NonNull::new_unchecked(raw_ptr);
+    //         let _ = obj.grow_zeroed(n, kani::any(), kani::any());
+    //     }
+    // }
 
-    // unsafe fn shrink(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError>
-    #[kani::proof_for_contract(Allocator::shrink)]
-    pub fn check_shrink() {
-        let obj : &dyn Allocator = &Global;
-        let raw_ptr = kani::any::<usize>() as *mut u8;
-        unsafe {
-            let n = NonNull::new_unchecked(raw_ptr);
-            let _ = obj.shrink(n, kani::any(), kani::any());
-        }
-    }
+    // TODO: disabled as Kani does not currently support contracts on traits
+    // // unsafe fn shrink(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError>
+    // #[kani::proof_for_contract(Allocator::shrink)]
+    // pub fn check_shrink() {
+    //     let obj : &dyn Allocator = &Global;
+    //     let raw_ptr = kani::any::<usize>() as *mut u8;
+    //     unsafe {
+    //         let n = NonNull::new_unchecked(raw_ptr);
+    //         let _ = obj.shrink(n, kani::any(), kani::any());
+    //     }
+    // }
 }
