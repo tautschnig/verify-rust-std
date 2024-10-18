@@ -469,7 +469,8 @@ mod verify {
         }
     }
 
-    // TODO: disabled as Kani does not currently support contracts on traits
+    // TODO: disabled as Kani does not currently support contracts on traits. See
+    // https://github.com/model-checking/kani/issues/1997
     // // unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout)
     // #[kani::proof_for_contract(Allocator::deallocate)]
     // pub fn check_deallocate() {
@@ -481,7 +482,8 @@ mod verify {
     //     }
     // }
 
-    // TODO: disabled as Kani does not currently support contracts on traits
+    // TODO: disabled as Kani does not currently support contracts on traits. See
+    // https://github.com/model-checking/kani/issues/1997
     // // unsafe fn grow(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError>
     // #[kani::proof_for_contract(Allocator::grow)]
     // pub fn check_grow() {
@@ -493,7 +495,8 @@ mod verify {
     //     }
     // }
 
-    // TODO: disabled as Kani does not currently support contracts on traits
+    // TODO: disabled as Kani does not currently support contracts on traits. See
+    // https://github.com/model-checking/kani/issues/1997
     // // unsafe fn grow_zeroed(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError>
     // #[kani::proof_for_contract(Allocator::grow_zeroed)]
     // pub fn check_grow_zeroed() {
@@ -505,7 +508,8 @@ mod verify {
     //     }
     // }
 
-    // TODO: disabled as Kani does not currently support contracts on traits
+    // TODO: disabled as Kani does not currently support contracts on traits. See
+    // https://github.com/model-checking/kani/issues/1997
     // // unsafe fn shrink(&self, ptr: NonNull<u8>, old_layout: Layout, new_layout: Layout) -> Result<NonNull<[u8]>, AllocError>
     // #[kani::proof_for_contract(Allocator::shrink)]
     // pub fn check_shrink() {
