@@ -101,7 +101,7 @@ Reviews of solutions towards challenges should consider at least the following a
 1. Does the pull request implement a solution that respects/meets the success
    criteria of the challenge?
 2. Do the contracts and harnesses incorporate the safety conditions stated in
-   the documentation (from comments in the code and Rust book)? Note that we
+   the documentation (from comments in the code and the [standard library documentation](https://doc.rust-lang.org/std/index.html))? Note that we
    currently focus on safety verification. Pre- and post-conditions towards
    functional correctness are acceptable as long as they do not negatively
    impact verification of safety, such as over-constraining input values.
