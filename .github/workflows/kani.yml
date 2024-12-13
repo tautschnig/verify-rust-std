@@ -1,26 +1,26 @@
-# This workflow is responsible for verifying the standard library with Kani.
-
 name: Kani
+
 on:
   workflow_dispatch:
+  merge_group:
   pull_request:
     branches: [ main ]
   push:
     paths:
       - 'library/**'
       - '.github/workflows/kani.yml'
-      - 'scripts/check_kani.sh'
+      - 'scripts/run-kani.sh'
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  build:
+  check-kani-on-std:
+    name: Verify std library
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # Kani does not support windows.
         os: [ubuntu-latest, macos-latest]
         include:
           - os: ubuntu-latest
@@ -28,11 +28,40 @@ jobs:
           - os: macos-latest
             base: macos
     steps:
-      - name: Checkout Library
+      # Step 1: Check out the repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           path: head
           submodules: true
 
-      - name: Run Kani Script
-        run: bash ./head/scripts/check_kani.sh ${{github.workspace}}/head
+      # Step 2: Run Kani on the std library (default configuration)
+      - name: Run Kani Verification
+        run: head/scripts/run-kani.sh --path ${{github.workspace}}/head
+   
+  run-kani-list:
+    name: Kani List
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Check out the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          path: head
+          submodules: true
+
+      # Step 2: Run list on the std library
+      - name: Run Kani List
+        run: head/scripts/run-kani.sh --run list --path ${{github.workspace}}/head
+      
+      # Step 3: Add output to job summary
+      - name: Add Kani List output to job summary
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const kaniOutput = fs.readFileSync('${{github.workspace}}/head/kani-list.md', 'utf8');
+            await core.summary
+              .addHeading('Kani List Output', 2)
+              .addRaw(kaniOutput, false)
+              .write();
