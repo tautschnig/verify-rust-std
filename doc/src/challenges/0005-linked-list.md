@@ -2,15 +2,16 @@
 
 - **Status:** Open
 - **Tracking Issue:** [#29](https://github.com/model-checking/verify-rust-std/issues/29)
-- **Start date:** *24/07/01*
-- **End date:** *24/12/10*
+- **Start date:** *2024/07/01*
+- **End date:** *2025/04/10*
+- **Reward:** *5,000 USD*
 
 -------------------
 
 
 ## Goal
 
-Verify the memory safety of [`alloc::collections::linked_list` functions](https://github.com/rust-lang/rust/blob/c290e9de32e8ba6a673ef125fde40eadd395d170/library/alloc/src/collections/linked_list.rs) that iterate the its internal inductive-defined data type.
+Verify the memory safety of [`alloc::collections::linked_list` functions](https://github.com/rust-lang/rust/blob/c290e9de32e8ba6a673ef125fde40eadd395d170/library/alloc/src/collections/linked_list.rs) that iterate over its internal inductive-defined data type.
 
 ### Details
 
@@ -23,7 +24,7 @@ The memory safety of the following public functions that iterating over the inte
 
 | Function | Location |
 |---------|---------|
-|clearn | alloc::collections::linked_list |
+|clear| alloc::collections::linked_list |
 |contains| alloc::collections::linked_list |
 |split_off| alloc::collections::linked_list |
 |remove| alloc::collections::linked_list |
