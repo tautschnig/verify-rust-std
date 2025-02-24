@@ -309,7 +309,8 @@ main() {
         pushd scripts/kani-std-analysis
         pip install -r requirements.txt
         echo "Computing Kani-specific metrics..."
-        ./kani_std_analysis.py --kani-list-file $current_dir/kani-list.json
+        ./kani_std_analysis.py --crate core --kani-list-file $current_dir/kani-list.json
+        ./kani_std_analysis.py --crate std --kani-list-file $current_dir/kani-list.json
         popd
         rm kani-list.json
     fi

@@ -28,10 +28,10 @@ import os
 # - See #TODOs for known limitations.
 
 # Process the results from Kani's std-analysis.sh script for each crate.
-# TODO For now, we just handle "core", but we should process all crates in the library.
 class GenericSTDMetrics():
-    def __init__(self, results_dir):
+    def __init__(self, results_dir, crate):
         self.results_directory = results_dir
+        self.crate = crate
         self.unsafe_fns_count = 0
         self.safe_abstractions_count = 0
         self.safe_fns_count = 0
@@ -44,7 +44,7 @@ class GenericSTDMetrics():
     # Read {crate}_overall_counts.csv
     # and return the number of unsafe functions and safe abstractions
     def read_overall_counts(self):
-        file_path = f"{self.results_directory}/core_scan_overall.csv"
+        file_path = f"{self.results_directory}/{self.crate}_scan_overall.csv"
         with open(file_path, 'r') as f:
             csv_reader = csv.reader(f, delimiter=';')
             counts = {row[0]: int(row[1]) for row in csv_reader if len(row) >= 2}
@@ -56,7 +56,7 @@ class GenericSTDMetrics():
     # and return an array of the unsafe functions and the safe abstractions
     def read_scan_functions(self):
         expected_header_start = "name;is_unsafe;has_unsafe_ops"
-        file_path = f"{self.results_directory}/core_scan_functions.csv"
+        file_path = f"{self.results_directory}/{self.crate}_scan_functions.csv"
 
         with open(file_path, 'r') as f:
             csv_reader = csv.reader(f, delimiter=';', quotechar='"')
@@ -90,19 +90,19 @@ class GenericSTDMetrics():
 
         # Sanity checks
         if len(self.unsafe_fns) != self.unsafe_fns_count:
-            print(f"Number of unsafe functions does not match core_scan_functions.csv")
+            print(f"Number of unsafe functions does not match {self.crate}_scan_functions.csv")
             print(f"UNSAFE_FNS_COUNT: {self.unsafe_fns_count}")
             print(f"UNSAFE_FNS length: {len(self.unsafe_fns)}")
             sys.exit(1)
 
         if len(self.safe_abstractions) != self.safe_abstractions_count:
-            print(f"Number of safe abstractions does not match core_scan_functions.csv")
+            print(f"Number of safe abstractions does not match {self.crate}_scan_functions.csv")
             print(f"SAFE_ABSTRACTIONS_COUNT: {self.safe_abstractions_count}")
             print(f"SAFE_ABSTRACTIONS length: {len(self.safe_abstractions)}")
             sys.exit(1)
         
         if len(self.safe_fns) != self.safe_fns_count:
-            print(f"Number of safe functions does not match core_scan_functions.csv")
+            print(f"Number of safe functions does not match {self.crate}_scan_functions.csv")
             print(f"SAFE_FNS_COUNT: {self.safe_fns_count}")
             print(f"SAFE_FNS length: {len(self.safe_fns)}")
             sys.exit(1)
@@ -140,7 +140,8 @@ class KaniListSTDMetrics():
 # Generate metrics about Kani's application to the standard library over time
 # by reading past metrics from metrics_file, then computing today's metrics.
 class KaniSTDMetricsOverTime():
-    def __init__(self, metrics_file):
+    def __init__(self, metrics_file, crate):
+        self.crate = crate
         self.dates = []
         self.unsafe_metrics = ['total_unsafe_fns', 'unsafe_fns_under_contract', 'verified_unsafe_fns_under_contract']
         self.safe_abstr_metrics = ['total_safe_abstractions', 'safe_abstractions_under_contract', 'verified_safe_abstractions_under_contract']
@@ -190,7 +191,7 @@ class KaniSTDMetricsOverTime():
 
         # Process the `kani list` and `std-analysis.sh` data
         kani_data = KaniListSTDMetrics(kani_list_filepath)
-        generic_metrics = GenericSTDMetrics(analysis_results_dir)
+        generic_metrics = GenericSTDMetrics(analysis_results_dir, self.crate)
 
         print("Comparing kani-list output to std-analysis.sh output and computing metrics...")
 
@@ -280,12 +281,28 @@ class KaniSTDMetricsOverTime():
         print(f"PNG graph generated: {outfile}")
 
     def plot(self, plot_dir):
-        self.plot_single(self.unsafe_plot_data, title="Contracts on Unsafe Functions in core", filename="core_unsafe_metrics.png", plot_dir=plot_dir)
-        self.plot_single(self.safe_abstr_plot_data, title="Contracts on Safe Abstractions in core", filename="core_safe_abstractions_metrics.png", plot_dir=plot_dir)
-        self.plot_single(self.safe_plot_data, title="Contracts on Safe Functions in core", filename="core_safe_metrics.png", plot_dir=plot_dir)
+        self.plot_single(
+            self.unsafe_plot_data,
+            title=f"Contracts on Unsafe Functions in {self.crate}",
+            filename=f"{self.crate}_unsafe_metrics.png",
+            plot_dir=plot_dir)
+        self.plot_single(
+            self.safe_abstr_plot_data,
+            title=f"Contracts on Safe Abstractions in {self.crate}",
+            filename=f"{self.crate}_safe_abstractions_metrics.png",
+            plot_dir=plot_dir)
+        self.plot_single(
+            self.safe_plot_data,
+            title=f"Contracts on Safe Functions in {self.crate}",
+            filename=f"{self.crate}_safe_metrics.png",
+            plot_dir=plot_dir)
 
 def main():
     parser = argparse.ArgumentParser(description="Generate metrics about Kani's application to the standard library.")
+    parser.add_argument('--crate',
+                    type=str,
+                    required=True,
+                    help="Name of standard library crate to produce metrics for")
     parser.add_argument('--metrics-file', 
                     type=str, 
                     default="metrics-data.json", 
@@ -308,7 +325,7 @@ def main():
     
     args = parser.parse_args()
 
-    metrics = KaniSTDMetricsOverTime(args.metrics_file)
+    metrics = KaniSTDMetricsOverTime(args.metrics_file, args.crate)
 
     if args.plot_only:
         metrics.plot(args.plot_dir)
