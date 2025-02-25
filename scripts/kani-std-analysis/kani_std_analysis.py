@@ -158,12 +158,9 @@ class KaniSTDMetricsOverTime():
 
     # Read historical data from self.metrics_file and initialize the date range.    
     def read_historical_data(self):
-        try:
-            with open(self.metrics_file, 'r') as f:
-                all_data = json.load(f)["results"]
-                self.update_plot_metrics(all_data)
-        except FileNotFoundError:
-            all_data = {}
+        with open(self.metrics_file, 'r') as f:
+            all_data = json.load(f)["results"]
+            self.update_plot_metrics(all_data)
         
         self.dates = [datetime.strptime(data["date"], '%Y-%m-%d').date() for data in all_data]
     
@@ -305,8 +302,8 @@ def main():
                     help="Name of standard library crate to produce metrics for")
     parser.add_argument('--metrics-file', 
                     type=str, 
-                    default="metrics-data.json", 
-                    help="Path to the JSON file containing metrics data (default: metrics-data.json)")
+                    required=True,
+                    help="Path to the JSON file containing metrics data")
     parser.add_argument('--kani-list-file', 
                     type=str, 
                     default="kani-list.json", 
