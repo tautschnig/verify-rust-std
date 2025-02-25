@@ -212,15 +212,15 @@ class KaniSTDMetricsOverTime():
         for data in all_data:
             for metric in self.unsafe_metrics:
                 if not metric.startswith("verified"):
-                    self.unsafe_plot_data[metric].append(data[metric])
+                    self.unsafe_plot_data[metric].append(data.get(metric, 0))
         
             for metric in self.safe_abstr_metrics:
                 if not metric.startswith("verified"):
-                    self.safe_abstr_plot_data[metric].append(data[metric])
+                    self.safe_abstr_plot_data[metric].append(data.get(metric, 0))
             
             for metric in self.safe_metrics:
                 if not metric.startswith("verified"):
-                    self.safe_plot_data[metric].append(data[metric])
+                    self.safe_plot_data[metric].append(data.get(metric, 0))
 
     # Read output from kani list and std-analysis.sh, then compare their outputs to compute Kani-specific metrics
     # and write the results to {self.metrics_file}
