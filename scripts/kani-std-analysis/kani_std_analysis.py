@@ -275,9 +275,9 @@ class KaniSTDMetricsOverTime():
             "total_unsafe_fns": generic_metrics.unsafe_fns_count,
             "total_unsafe_fns_with_loop": len(generic_metrics.unsafe_fns_with_loop),
             "total_safe_abstractions": generic_metrics.safe_abstractions_count,
-            "total_safe_abstractions_with_loop": len(generic_metrics.total_safe_abstractions_with_loop)
+            "total_safe_abstractions_with_loop": len(generic_metrics.total_safe_abstractions_with_loop),
             "total_safe_fns": generic_metrics.safe_fns_count,
-            "total_safe_fns_with_loop": len(generic_metrics.total_safe_fns_with_loop)
+            "total_safe_fns_with_loop": len(generic_metrics.total_safe_fns_with_loop),
             "unsafe_fns_under_contract": unsafe_fns_under_contract,
             "unsafe_fns_with_loop_under_contract": unsafe_fns_with_loop_under_contract,
             "verified_unsafe_fns_under_contract": verified_unsafe_fns_under_contract,
