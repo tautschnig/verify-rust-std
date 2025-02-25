@@ -27,6 +27,17 @@ import os
 #   But `kani list` runs on this fork, so it can still see it and add it to the total functions under contract.
 # - See #TODOs for known limitations.
 
+def str_to_bool(string: str):
+    match string.strip().lower():
+        case "true":
+            return True
+        case "false":
+            return False
+        case _:
+            print(f"Unexpected to-be-Boolean string {string}")
+            sys.exit(1)
+
+
 # Process the results from Kani's std-analysis.sh script for each crate.
 class GenericSTDMetrics():
     def __init__(self, results_dir, crate):
@@ -36,8 +47,11 @@ class GenericSTDMetrics():
         self.safe_abstractions_count = 0
         self.safe_fns_count = 0
         self.unsafe_fns = []
+        self.unsafe_fns_with_loop = []
         self.safe_abstractions = []
+        self.safe_abstractions_with_loop = []
         self.safe_fns = [] 
+        self.safe_fns_with_loop = []
 
         self.read_std_analysis()
         
@@ -55,7 +69,7 @@ class GenericSTDMetrics():
     # Read {crate}_scan_functions.csv
     # and return an array of the unsafe functions and the safe abstractions
     def read_scan_functions(self):
-        expected_header_start = "name;is_unsafe;has_unsafe_ops"
+        expected_header_start = "name;is_unsafe;has_unsafe_ops;has_unsupported_input;has_loop"
         file_path = f"{self.results_directory}/{self.crate}_scan_functions.csv"
 
         with open(file_path, 'r') as f:
@@ -64,7 +78,7 @@ class GenericSTDMetrics():
             # The row parsing logic below assumes the column structure in expected_header_start,
             # so assert that is how the header begins before continuing
             header = next(csv_reader)
-            header_str = ';'.join(header[:3])
+            header_str = ';'.join(header[:5])
             if not header_str.startswith(expected_header_start):
                 print(f"Error: Unexpected CSV header in {file_path}")
                 print(f"Expected header to start with: {expected_header_start}")
@@ -72,17 +86,23 @@ class GenericSTDMetrics():
                 sys.exit(1)
 
             for row in csv_reader:
-                if len(row) >= 3:
+                if len(row) >= 5:
                     name, is_unsafe, has_unsafe_ops = row[0], row[1], row[2]
+                    has_unsupported_input, has_loop = row[3], row[4]
                     # An unsafe function is a function for which is_unsafe=true
-                    if is_unsafe.strip() == "true":
+                    if str_to_bool(is_unsafe):
                         self.unsafe_fns.append(name)
+                        if str_to_bool(has_loop):
+                            self.unsafe_fns_with_loop.append(name)
                     else:
-                        assert is_unsafe.strip() == "false" # sanity check against malformed data
                         self.safe_fns.append(name)
+                        if str_to_bool(has_loop):
+                            self.safe_fns_with_loop.append(name)
                         # A safe abstraction is a safe function with unsafe ops
-                        if has_unsafe_ops.strip() == "true":
+                        if str_to_bool(has_unsafe_ops):
                             self.safe_abstractions.append(name)
+                            if str_to_bool(has_loop):
+                                self.safe_abstractions_with_loop.append(name)
 
     def read_std_analysis(self):
         self.read_overall_counts()
@@ -143,9 +163,30 @@ class KaniSTDMetricsOverTime():
     def __init__(self, metrics_file, crate):
         self.crate = crate
         self.dates = []
-        self.unsafe_metrics = ['total_unsafe_fns', 'unsafe_fns_under_contract', 'verified_unsafe_fns_under_contract']
-        self.safe_abstr_metrics = ['total_safe_abstractions', 'safe_abstractions_under_contract', 'verified_safe_abstractions_under_contract']
-        self.safe_metrics = ['total_safe_fns', 'safe_fns_under_contract', 'verified_safe_fns_under_contract']
+        self.unsafe_metrics = [
+                'total_unsafe_fns',
+                'total_unsafe_fns_with_loop',
+                'unsafe_fns_under_contract',
+                'unsafe_fns_with_loop_under_contract',
+                'verified_unsafe_fns_under_contract',
+                'verified_unsafe_fns_with_loop_under_contract'
+                ]
+        self.safe_abstr_metrics = [
+                'total_safe_abstractions',
+                'total_safe_abstractions_with_loop'
+                'safe_abstractions_under_contract',
+                'safe_abstractions_with_loop_under_contract',
+                'verified_safe_abstractions_under_contract',
+                'verified_safe_abstractions_with_loop_under_contract'
+                ]
+        self.safe_metrics = [
+                'total_safe_fns',
+                'total_safe_fns_with_loop',
+                'safe_fns_under_contract',
+                'safe_fns_with_loop_under_contract',
+                'verified_safe_fns_under_contract',
+                'verified_safe_fns_with_loop_under_contract'
+                ]
         # The keys in these dictionaries are unsafe_metrics, safe_abstr_metrics, and safe_metrics, respectively; see update_plot_metrics()
         self.unsafe_plot_data = defaultdict(list)
         self.safe_abstr_plot_data = defaultdict(list)
@@ -193,35 +234,62 @@ class KaniSTDMetricsOverTime():
         print("Comparing kani-list output to std-analysis.sh output and computing metrics...")
 
         (unsafe_fns_under_contract, verified_unsafe_fns_under_contract) = (0, 0)
+        unsafe_fns_with_loop_under_contract = 0
+        verified_unsafe_fns_with_loop_under_contract = 0
         (safe_abstractions_under_contract, verified_safe_abstractions_under_contract) = (0, 0)
+        safe_abstractions_with_loop_under_contract = 0
+        verified_safe_abstractions_with_loop_under_contract = 0
         (safe_fns_under_contract, verified_safe_fns_under_contract) = (0, 0)
+        safe_fns_with_loop_under_contract = 0
+        verified_safe_fns_with_loop_under_contract = 0
 
         for (func_under_contract, has_harnesses) in kani_data.fns_under_contract:
             if func_under_contract in generic_metrics.unsafe_fns:
+                has_loop = int(func_under_contract in
+                               generic_metrics.unsafe_fns_with_loop)
                 unsafe_fns_under_contract += 1
+                unsafe_fns_with_loop_under_contract += has_loop
                 if has_harnesses:
                     verified_unsafe_fns_under_contract += 1
+                    verified_unsafe_fns_with_loop_under_contract += has_loop
             if func_under_contract in generic_metrics.safe_abstractions:
+                has_loop = int(func_under_contract in
+                               generic_metrics.safe_abstractions_with_loop)
                 safe_abstractions_under_contract += 1
+                safe_abstractions_with_loop_under_contract += has_loop
                 if has_harnesses:
                     verified_safe_abstractions_under_contract += 1
+                    verified_safe_abstractions_with_loop_under_contract += has_loop
             if func_under_contract in generic_metrics.safe_fns:
+                has_loop = int(func_under_contract in
+                               generic_metrics.safe_fns_with_loop)
                 safe_fns_under_contract += 1
+                safe_fns_with_loop_under_contract += has_loop
                 if has_harnesses:
                     verified_safe_fns_under_contract += 1
+                    verified_safe_fns_with_loop_under_contract += has_loop
 
         # Keep the keys here in sync with unsafe_metrics, safe_metrics, and safe_abstr_metrics
         data = {
             "date": self.date,
             "total_unsafe_fns": generic_metrics.unsafe_fns_count,
+            "total_unsafe_fns_with_loop": len(generic_metrics.unsafe_fns_with_loop),
             "total_safe_abstractions": generic_metrics.safe_abstractions_count,
+            "total_safe_abstractions_with_loop": len(generic_metrics.total_safe_abstractions_with_loop)
             "total_safe_fns": generic_metrics.safe_fns_count,
+            "total_safe_fns_with_loop": len(generic_metrics.total_safe_fns_with_loop)
             "unsafe_fns_under_contract": unsafe_fns_under_contract,
+            "unsafe_fns_with_loop_under_contract": unsafe_fns_with_loop_under_contract,
             "verified_unsafe_fns_under_contract": verified_unsafe_fns_under_contract,
+            "verified_unsafe_fns_with_loop_under_contract": verified_unsafe_fns_with_loop_under_contract,
             "safe_abstractions_under_contract": safe_abstractions_under_contract,
+            "safe_abstractions_with_loop_under_contract": safe_abstractions_with_loop_under_contract,
             "verified_safe_abstractions_under_contract": verified_safe_abstractions_under_contract,
+            "verified_safe_abstractions_with_loop_under_contract": verified_safe_abstractions_with_loop_under_contract,
             "safe_fns_under_contract": safe_fns_under_contract,
+            "safe_fns_with_loop_under_contract": safe_fns_with_loop_under_contract,
             "verified_safe_fns_under_contract": verified_safe_fns_under_contract,
+            "verified_safe_fns_with_loop_under_contract": verified_safe_fns_with_loop_under_contract,
             "total_functions_under_contract": kani_data.total_fns_under_contract,
         }
 
@@ -241,7 +309,27 @@ class KaniSTDMetricsOverTime():
     def plot_single(self, data, title, filename, plot_dir):
         plt.figure(figsize=(14, 8))
 
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#946F7bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        colors = [
+                '#1f77b4', #total_unsafe_fns
+                '#941fb4', #total_unsafe_fns_with_loop
+                '#ff7f0e', #total_safe_abstractions
+                '#abff0e', #total_safe_abstractions_with_loop
+                '#2ca02c', #total_safe_fns
+                '#a02c8d', #total_safe_fns_with_loop
+                '#d62728', #unsafe_fns_under_contract
+                '#27d6aa', #unsafe_fns_with_loop_under_contract
+                '#9467bd', #verified_unsafe_fns_under_contract
+                '#67acbd', #verified_unsafe_fns_with_loop_under_contract
+                '#8c564b', #safe_abstractions_under_contract
+                '#8c814b', #safe_abstractions_with_loop_under_contract
+                '#e377c2', #verified_safe_abstractions_under_contract
+                '#a277e3', #verified_safe_abstractions_with_loop_under_contract
+                '#7f7f7f', #safe_fns_under_contract
+                '#9e6767', #safe_fns_with_loop_under_contract
+                '#bcbd22', #verified_safe_fns_under_contract
+                '#49bd22', #verified_safe_fns_with_loop_under_contract
+                '#17becf' #total_functions_under_contract
+                ]
         
         for i, (metric, values) in enumerate(data.items()):
             color = colors[i % len(colors)]
