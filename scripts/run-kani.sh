@@ -304,6 +304,18 @@ main() {
         "$kani_path" list -Z list $unstable_args ./library --std --format json
         echo "Running Kani's std-analysis command..."
         pushd $build_dir
+        cat | patch -p1 << "EOF"
+--- a/scripts/std-analysis.sh
++++ b/scripts/std-analysis.sh
+@@ -61,6 +61,7 @@ then
+ fi
+ cargo new std_lib_analysis --lib
+ cd std_lib_analysis
++sed -i '1i cargo-features = ["edition2024"]' Cargo.toml
+
+ echo '
+ pub fn dummy() {
+EOF
         ./scripts/std-analysis.sh
         popd
         pushd scripts/kani-std-analysis
