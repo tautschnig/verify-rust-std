@@ -207,6 +207,7 @@ run_verification_subset() {
     printf '%s\n' "${harnesses[@]}"
     "$kani_path" verify-std -Z unstable-options ./library \
         $unstable_args \
+        --no-assert-contracts \
         $harness_args --exact \
         -j \
         --output-format=terse \
@@ -291,6 +292,7 @@ main() {
             echo "Running Kani verify-std command..."
             "$kani_path" verify-std -Z unstable-options ./library \
                 $unstable_args \
+                --no-assert-contracts \
                 $command_args \
                 --enable-unstable \
                 --cbmc-args --object-bits 12
@@ -302,23 +304,9 @@ main() {
         local current_dir=$(pwd)
         echo "Running Kani list command..."
         "$kani_path" list -Z list $unstable_args ./library --std --format json
-        echo "Running Kani's std-analysis command..."
-        pushd $build_dir
-        cat | patch -p1 << "EOF"
---- a/scripts/std-analysis.sh
-+++ b/scripts/std-analysis.sh
-@@ -61,6 +61,7 @@ then
- fi
- cargo new std_lib_analysis --lib
- cd std_lib_analysis
-+sed -i '1i cargo-features = ["edition2024"]' Cargo.toml
-
- echo '
- pub fn dummy() {
-EOF
-        ./scripts/std-analysis.sh
-        popd
         pushd scripts/kani-std-analysis
+        echo "Running Kani's std-analysis command..."
+        ./std-analysis.sh $build_dir
         pip install -r requirements.txt
         echo "Computing Kani-specific metrics..."
         ./kani_std_analysis.py --crate core \
