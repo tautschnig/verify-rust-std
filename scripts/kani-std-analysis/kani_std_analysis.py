@@ -87,7 +87,6 @@ class GenericSTDMetrics():
 
             for row in csv_reader:
                 if len(row) >= 5:
-                    print(f"Row{self.crate}: " + str(row))
                     name, is_unsafe, has_unsafe_ops = row[0], row[1], row[2]
                     has_unsupported_input, has_loop = row[3], row[4]
                     # An unsafe function is a function for which is_unsafe=true
