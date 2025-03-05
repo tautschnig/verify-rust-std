@@ -10,12 +10,16 @@ edition = "2021"
 
 [dependencies]
 core = { path = "../core" }
+<<<<<<< HEAD
 compiler_builtins = { version = "=0.1.138", features = ['rustc-dep-of-std'] }
 safety = { path = "../contracts/safety" }
+=======
+compiler_builtins = { version = "=0.1.146", features = ['rustc-dep-of-std'] }
+>>>>>>> a8e41318a0cca60d86e674a340acfed8c66daa2f
 
 [dev-dependencies]
-rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
-rand_xorshift = "0.3.0"
+rand = { version = "0.9.0", default-features = false, features = ["alloc"] }
+rand_xorshift = "0.4.0"
 
 [[test]]
 name = "alloctests"
