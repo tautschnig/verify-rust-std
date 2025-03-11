@@ -96,6 +96,10 @@ pub trait Add<Rhs = Self> {
 macro_rules! add_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
+<<<<<<< HEAD
+=======
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
         impl const Add for $t {
             type Output = $t;
 

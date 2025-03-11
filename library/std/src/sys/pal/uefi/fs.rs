@@ -258,6 +258,13 @@ impl File {
         self.0
     }
 
+<<<<<<< HEAD
+=======
+    pub fn tell(&self) -> io::Result<u64> {
+        self.0
+    }
+
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
     pub fn duplicate(&self) -> io::Result<File> {
         self.0
     }

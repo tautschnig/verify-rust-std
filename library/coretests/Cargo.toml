@@ -6,7 +6,11 @@ repository = "https://github.com/rust-lang/rust.git"
 description = "Tests for the Rust Core Library"
 autotests = false
 autobenches = false
+<<<<<<< HEAD
 edition = "2021"
+=======
+edition = "2024"
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
 
 [lib]
 path = "lib.rs"
@@ -23,5 +27,10 @@ path = "benches/lib.rs"
 test = true
 
 [dev-dependencies]
+<<<<<<< HEAD
 rand = { version = "0.8.5", default-features = false }
 rand_xorshift = { version = "0.3.0", default-features = false }
+=======
+rand = { version = "0.9.0", default-features = false }
+rand_xorshift = { version = "0.4.0", default-features = false }
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491

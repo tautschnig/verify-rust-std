@@ -273,6 +273,11 @@
 //
 // Language features:
 // tidy-alphabetical-start
+<<<<<<< HEAD
+=======
+
+// stabilization was reverted after it hit beta
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -282,6 +287,7 @@
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
+#![feature(char_max_len)]
 #![feature(concat_idents)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
@@ -300,6 +306,7 @@
 #![feature(link_cfg)]
 #![feature(linkage)]
 #![feature(macro_metavar_expr_concat)]
+#![feature(maybe_uninit_fill)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
 #![feature(needs_panic_runtime)]
@@ -402,7 +409,6 @@
 #![feature(custom_test_frameworks)]
 #![feature(edition_panic)]
 #![feature(format_args_nl)]
-#![feature(get_many_mut)]
 #![feature(log_syntax)]
 #![feature(test)]
 #![feature(trace_macros)]

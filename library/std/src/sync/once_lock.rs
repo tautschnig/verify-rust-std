@@ -191,7 +191,11 @@ impl<T> OnceLock<T> {
     /// })
     /// ```
     #[inline]
+<<<<<<< HEAD
     #[stable(feature = "once_wait", since = "CURRENT_RUSTC_VERSION")]
+=======
+    #[stable(feature = "once_wait", since = "1.86.0")]
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
     pub fn wait(&self) -> &T {
         self.once.wait_force();
 

@@ -167,14 +167,22 @@ macro_rules! midpoint_impl {
         /// # Examples
         ///
         /// ```
+<<<<<<< HEAD
         /// #![feature(num_midpoint_signed)]
+=======
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!((-1", stringify!($SelfT), ").midpoint(2), 0);")]
         #[doc = concat!("assert_eq!((-7", stringify!($SelfT), ").midpoint(0), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-7), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
+<<<<<<< HEAD
         #[unstable(feature = "num_midpoint_signed", issue = "110840")]
+=======
+        #[stable(feature = "num_midpoint_signed", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "num_midpoint_signed", since = "CURRENT_RUSTC_VERSION")]
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -219,14 +227,22 @@ macro_rules! midpoint_impl {
         /// # Examples
         ///
         /// ```
+<<<<<<< HEAD
         /// #![feature(num_midpoint_signed)]
+=======
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
         #[doc = concat!("assert_eq!((-1", stringify!($SelfT), ").midpoint(2), 0);")]
         #[doc = concat!("assert_eq!((-7", stringify!($SelfT), ").midpoint(0), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-7), -3);")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
+<<<<<<< HEAD
         #[unstable(feature = "num_midpoint_signed", issue = "110840")]
+=======
+        #[stable(feature = "num_midpoint_signed", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "num_midpoint_signed", since = "CURRENT_RUSTC_VERSION")]
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1606,6 +1622,7 @@ macro_rules! from_str_int_impl {
 
 from_str_int_impl! { signed isize i8 i16 i32 i64 i128 }
 from_str_int_impl! { unsigned usize u8 u16 u32 u64 u128 }
+<<<<<<< HEAD
 
 #[cfg(kani)]
 #[unstable(feature = "kani", issue = "none")]
@@ -2316,3 +2333,5 @@ mod verify {
         checked_f128_to_int_unchecked_usize
     );
 }
+=======
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491

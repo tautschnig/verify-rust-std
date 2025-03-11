@@ -46,6 +46,7 @@ pub struct GetAddress {
 }
 
 pub use dns::LookupHost;
+<<<<<<< HEAD
 
 #[allow(nonstandard_style)]
 pub mod netc {
@@ -81,3 +82,5 @@ pub mod netc {
         pub sin6_scope_id: u32,
     }
 }
+=======
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491

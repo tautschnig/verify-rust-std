@@ -228,7 +228,11 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
+<<<<<<< HEAD
             return io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data",);
+=======
+            return io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data");
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
         }
 
         match self.setup_io(default, true) {
@@ -1228,7 +1232,7 @@ mod linux_child_ext {
                 .as_ref()
                 // SAFETY: The os type is a transparent wrapper, therefore we can transmute references
                 .map(|fd| unsafe { mem::transmute::<&imp::PidFd, &os::PidFd>(fd) })
-                .ok_or_else(|| io::Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
+                .ok_or_else(|| io::const_error!(ErrorKind::Uncategorized, "No pidfd was created."))
         }
 
         fn into_pidfd(mut self) -> Result<os::PidFd, Self> {

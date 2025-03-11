@@ -624,20 +624,29 @@ impl File {
         self.inner.datasync()
     }
 
-    /// Acquire an exclusive advisory lock on the file. Blocks until the lock can be acquired.
+    /// Acquire an exclusive lock on the file. Blocks until the lock can be acquired.
     ///
-    /// This acquires an exclusive advisory lock; no other file handle to this file may acquire
-    /// another lock.
+    /// This acquires an exclusive lock; no other file handle to this file may acquire another lock.
     ///
+<<<<<<< HEAD
     /// If this file handle/descriptor, or a clone of it, already holds an advisory lock the exact
     /// behavior is unspecified and platform dependent, including the possibility that it will
     /// deadlock. However, if this method returns, then an exclusive lock is held.
+=======
+    /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
+    /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
+    /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
+    /// cause non-lockholders to block.
+    ///
+    /// If this file handle/descriptor, or a clone of it, already holds an lock the exact behavior
+    /// is unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns, then an exclusive lock is held.
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
     ///
     /// If the file not open for writing, it is unspecified whether this function returns an error.
     ///
-    /// Note, this is an advisory lock meant to interact with [`lock_shared`], [`try_lock`],
-    /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
-    /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    /// The lock will be released when this file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -648,8 +657,12 @@ impl File {
     /// and the `LockFileEx` function on Windows with the `LOCKFILE_EXCLUSIVE_LOCK` flag. Note that,
     /// this [may change in the future][changes].
     ///
+    /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
+    /// open it with one of `.read(true)`, `.read(true).append(true)`, or `.write(true)`.
+    ///
     /// [changes]: io#platform-specific-behavior
     ///
+    /// [`lock`]: File::lock
     /// [`lock_shared`]: File::lock_shared
     /// [`try_lock`]: File::try_lock
     /// [`try_lock_shared`]: File::try_lock_shared
@@ -660,20 +673,20 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
+    ///     let f = File::create("foo.txt")?;
     ///     f.lock()?;
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
     pub fn lock(&self) -> io::Result<()> {
         self.inner.lock()
     }
 
+<<<<<<< HEAD
     /// Acquire a shared (non-exclusive) advisory lock on the file. Blocks until the lock can be acquired.
     ///
     /// This acquires a shared advisory lock; more than one file handle may hold a shared lock, but
@@ -682,10 +695,24 @@ impl File {
     /// If this file handle/descriptor, or a clone of it, already holds an advisory lock, the exact
     /// behavior is unspecified and platform dependent, including the possibility that it will
     /// deadlock. However, if this method returns, then a shared lock is held.
+=======
+    /// Acquire a shared (non-exclusive) lock on the file. Blocks until the lock can be acquired.
     ///
-    /// Note, this is an advisory lock meant to interact with [`lock`], [`try_lock`],
-    /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
-    /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    /// This acquires a shared lock; more than one file handle may hold a shared lock, but none may
+    /// hold an exclusive lock at the same time.
+    ///
+    /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
+    /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
+    /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
+    /// cause non-lockholders to block.
+    ///
+    /// If this file handle/descriptor, or a clone of it, already holds an lock, the exact behavior
+    /// is unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns, then a shared lock is held.
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
+    ///
+    /// The lock will be released when this file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -696,9 +723,13 @@ impl File {
     /// and the `LockFileEx` function on Windows. Note that, this
     /// [may change in the future][changes].
     ///
+    /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
+    /// open it with one of `.read(true)`, `.read(true).append(true)`, or `.write(true)`.
+    ///
     /// [changes]: io#platform-specific-behavior
     ///
     /// [`lock`]: File::lock
+    /// [`lock_shared`]: File::lock_shared
     /// [`try_lock`]: File::try_lock
     /// [`try_lock_shared`]: File::try_lock_shared
     /// [`unlock`]: File::unlock
@@ -708,7 +739,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -717,29 +747,45 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
     pub fn lock_shared(&self) -> io::Result<()> {
         self.inner.lock_shared()
     }
 
+<<<<<<< HEAD
     /// Try to acquire an exclusive advisory lock on the file.
     ///
     /// Returns `Ok(false)` if a different lock is already held on this file (via another
     /// handle/descriptor).
+=======
+    /// Try to acquire an exclusive lock on the file.
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
     ///
-    /// This acquires an exclusive advisory lock; no other file handle to this file may acquire
-    /// another lock.
+    /// Returns `Ok(false)` if a different lock is already held on this file (via another
+    /// handle/descriptor).
     ///
+<<<<<<< HEAD
     /// If this file handle/descriptor, or a clone of it, already holds an advisory lock, the exact
     /// behavior is unspecified and platform dependent, including the possibility that it will
     /// deadlock. However, if this method returns `Ok(true)`, then it has acquired an exclusive
     /// lock.
+=======
+    /// This acquires an exclusive lock; no other file handle to this file may acquire another lock.
+    ///
+    /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
+    /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
+    /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
+    /// cause non-lockholders to block.
+    ///
+    /// If this file handle/descriptor, or a clone of it, already holds an lock, the exact behavior
+    /// is unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns `Ok(true)`, then it has acquired an exclusive lock.
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
     ///
     /// If the file not open for writing, it is unspecified whether this function returns an error.
     ///
-    /// Note, this is an advisory lock meant to interact with [`lock`], [`lock_shared`],
-    /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
-    /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    /// The lock will be released when this file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -751,10 +797,14 @@ impl File {
     /// and `LOCKFILE_FAIL_IMMEDIATELY` flags. Note that, this
     /// [may change in the future][changes].
     ///
+    /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
+    /// open it with one of `.read(true)`, `.read(true).append(true)`, or `.write(true)`.
+    ///
     /// [changes]: io#platform-specific-behavior
     ///
     /// [`lock`]: File::lock
     /// [`lock_shared`]: File::lock_shared
+    /// [`try_lock`]: File::try_lock
     /// [`try_lock_shared`]: File::try_lock_shared
     /// [`unlock`]: File::unlock
     /// [`read`]: Read::read
@@ -763,20 +813,20 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
+    ///     let f = File::create("foo.txt")?;
     ///     f.try_lock()?;
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
     pub fn try_lock(&self) -> io::Result<bool> {
         self.inner.try_lock()
     }
 
+<<<<<<< HEAD
     /// Try to acquire a shared (non-exclusive) advisory lock on the file.
     ///
     /// Returns `Ok(false)` if an exclusive lock is already held on this file (via another
@@ -784,14 +834,27 @@ impl File {
     ///
     /// This acquires a shared advisory lock; more than one file handle may hold a shared lock, but
     /// none may hold an exclusive lock at the same time.
+=======
+    /// Try to acquire a shared (non-exclusive) lock on the file.
     ///
-    /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
+    /// Returns `Ok(false)` if an exclusive lock is already held on this file (via another
+    /// handle/descriptor).
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
+    ///
+    /// This acquires a shared lock; more than one file handle may hold a shared lock, but none may
+    /// hold an exclusive lock at the same time.
+    ///
+    /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
+    /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
+    /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
+    /// cause non-lockholders to block.
+    ///
+    /// If this file handle, or a clone of it, already holds an lock, the exact behavior is
     /// unspecified and platform dependent, including the possibility that it will deadlock.
     /// However, if this method returns `Ok(true)`, then it has acquired a shared lock.
     ///
-    /// Note, this is an advisory lock meant to interact with [`lock`], [`try_lock`],
-    /// [`try_lock`], and [`unlock`]. Its interactions with other methods, such as [`read`]
-    /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    /// The lock will be released when this file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -803,11 +866,15 @@ impl File {
     /// `LOCKFILE_FAIL_IMMEDIATELY` flag. Note that, this
     /// [may change in the future][changes].
     ///
+    /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
+    /// open it with one of `.read(true)`, `.read(true).append(true)`, or `.write(true)`.
+    ///
     /// [changes]: io#platform-specific-behavior
     ///
     /// [`lock`]: File::lock
     /// [`lock_shared`]: File::lock_shared
     /// [`try_lock`]: File::try_lock
+    /// [`try_lock_shared`]: File::try_lock_shared
     /// [`unlock`]: File::unlock
     /// [`read`]: Read::read
     /// [`write`]: Write::write
@@ -815,7 +882,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -824,7 +890,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
     pub fn try_lock_shared(&self) -> io::Result<bool> {
         self.inner.try_lock_shared()
     }
@@ -844,12 +910,14 @@ impl File {
     /// and the `UnlockFile` function on Windows. Note that, this
     /// [may change in the future][changes].
     ///
+    /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
+    /// open it with one of `.read(true)`, `.read(true).append(true)`, or `.write(true)`.
+    ///
     /// [changes]: io#platform-specific-behavior
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -859,7 +927,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
     pub fn unlock(&self) -> io::Result<()> {
         self.inner.unlock()
     }
@@ -1229,6 +1297,9 @@ impl Seek for &File {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         self.inner.seek(pos)
     }
+    fn stream_position(&mut self) -> io::Result<u64> {
+        self.inner.tell()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1274,6 +1345,9 @@ impl Write for File {
 impl Seek for File {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         (&*self).seek(pos)
+    }
+    fn stream_position(&mut self) -> io::Result<u64> {
+        (&*self).stream_position()
     }
 }
 
@@ -2505,6 +2579,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// * `from` does not exist.
 /// * The current process does not have the permission rights to read
 ///   `from` or write `to`.
+/// * The parent directory of `to` doesn't exist.
 ///
 /// # Examples
 ///

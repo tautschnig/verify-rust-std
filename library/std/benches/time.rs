@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 use std::time::Instant;
 
+=======
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
 #[cfg(not(target_arch = "wasm32"))]
 use test::{Bencher, black_box};
 
@@ -10,6 +13,10 @@ macro_rules! bench_instant_threaded {
         fn $bench_name(b: &mut Bencher) -> std::thread::Result<()> {
             use std::sync::Arc;
             use std::sync::atomic::{AtomicBool, Ordering};
+<<<<<<< HEAD
+=======
+            use std::time::Instant;
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
 
             let running = Arc::new(AtomicBool::new(true));
 
