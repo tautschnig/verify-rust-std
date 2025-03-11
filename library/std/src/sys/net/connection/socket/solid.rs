@@ -1,17 +1,28 @@
 use libc::{c_int, c_void, size_t};
 
 use self::netc::{MSG_PEEK, sockaddr, socklen_t};
+<<<<<<< HEAD
+=======
+use super::{getsockopt, setsockopt, socket_addr_from_c, socket_addr_to_c};
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::solid::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd};
 use crate::sys::abi;
+<<<<<<< HEAD
 use crate::sys::net::{getsockopt, setsockopt, sockaddr_to_addr};
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 use crate::sys_common::{FromInner, IntoInner};
 use crate::time::Duration;
 use crate::{cmp, mem, ptr, str};
 
+<<<<<<< HEAD
 pub mod netc {
+=======
+pub(super) mod netc {
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     pub use crate::sys::abi::sockets::*;
 }
 
@@ -131,7 +142,7 @@ impl Socket {
     }
 
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
-        let (addr, len) = addr.into_inner();
+        let (addr, len) = socket_addr_to_c(addr);
         cvt(unsafe { netc::connect(self.as_raw_fd(), addr.as_ptr(), len) })?;
         Ok(())
     }
@@ -256,7 +267,7 @@ impl Socket {
                 &mut addrlen,
             )
         })?;
-        Ok((n as usize, sockaddr_to_addr(&storage, addrlen as usize)?))
+        Ok((n as usize, unsafe { socket_addr_from_c(&storage, addrlen as usize)? }))
     }
 
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {

@@ -333,7 +333,10 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use]
     #[inline]
     #[stable(feature = "strict_provenance", since = "1.84.0")]
+<<<<<<< HEAD
     #[ensures(|result| result.get() == self.as_ptr() as *const() as usize)]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     pub fn addr(self) -> NonZero<usize> {
         // SAFETY: The pointer is guaranteed by the type to be non-null,
         // meaning that the address will be non-zero.
@@ -362,7 +365,10 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use]
     #[inline]
     #[stable(feature = "strict_provenance", since = "1.84.0")]
+<<<<<<< HEAD
     #[ensures(|result: &Self| !result.as_ptr().is_null() && result.addr() == addr)]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     pub fn with_addr(self, addr: NonZero<usize>) -> Self {
         // SAFETY: The result of `ptr::from::with_addr` is non-null because `addr` is guaranteed to be non-zero.
         unsafe { NonNull::new_unchecked(self.as_ptr().with_addr(addr.get()) as *mut _) }
@@ -377,7 +383,10 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use]
     #[inline]
     #[stable(feature = "strict_provenance", since = "1.84.0")]
+<<<<<<< HEAD
     #[ensures(|result: &Self| !result.as_ptr().is_null())]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     pub fn map_addr(self, f: impl FnOnce(NonZero<usize>) -> NonZero<usize>) -> Self {
         self.with_addr(f(self.addr()))
     }
@@ -737,12 +746,15 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+<<<<<<< HEAD
     #[requires(
         count.checked_mul(core::mem::size_of::<T>()).is_some() &&
         count * core::mem::size_of::<T>() <= isize::MAX as usize &&
         core::ub_checks::same_allocation(self.as_ptr(), self.as_ptr().wrapping_sub(count))
     )]
     #[ensures(|result: &NonNull<T>| result.as_ptr() == self.as_ptr().offset(-(count as isize)))]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     pub const unsafe fn sub(self, count: usize) -> Self
     where
         T: Sized,
@@ -938,14 +950,13 @@ impl<T: ?Sized> NonNull<T> {
     /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
     /// that their safety preconditions are met:
     /// ```rust
-    /// # #![feature(ptr_sub_ptr)]
-    /// # unsafe fn blah(ptr: std::ptr::NonNull<u32>, origin: std::ptr::NonNull<u32>, count: usize) -> bool {
-    /// ptr.sub_ptr(origin) == count
+    /// # unsafe fn blah(ptr: std::ptr::NonNull<u32>, origin: std::ptr::NonNull<u32>, count: usize) -> bool { unsafe {
+    /// ptr.offset_from_unsigned(origin) == count
     /// # &&
     /// origin.add(count) == ptr
     /// # &&
     /// ptr.sub(count) == origin
-    /// # }
+    /// # } }
     /// ```
     ///
     /// # Safety
@@ -967,24 +978,24 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_sub_ptr)]
     /// use std::ptr::NonNull;
     ///
     /// let a = [0; 5];
     /// let ptr1: NonNull<u32> = NonNull::from(&a[1]);
     /// let ptr2: NonNull<u32> = NonNull::from(&a[3]);
     /// unsafe {
-    ///     assert_eq!(ptr2.sub_ptr(ptr1), 2);
+    ///     assert_eq!(ptr2.offset_from_unsigned(ptr1), 2);
     ///     assert_eq!(ptr1.add(2), ptr2);
     ///     assert_eq!(ptr2.sub(2), ptr1);
-    ///     assert_eq!(ptr2.sub_ptr(ptr2), 0);
+    ///     assert_eq!(ptr2.offset_from_unsigned(ptr2), 0);
     /// }
     ///
     /// // This would be incorrect, as the pointers are not correctly ordered:
-    /// // ptr1.sub_ptr(ptr2)
+    /// // ptr1.offset_from_unsigned(ptr2)
     /// ```
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+<<<<<<< HEAD
     #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
     #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
     #[requires(
@@ -995,11 +1006,20 @@ impl<T: ?Sized> NonNull<T> {
     )]
     #[ensures(|result: &usize| *result == self.as_ptr().offset_from(subtracted.as_ptr()) as usize)]
     pub const unsafe fn sub_ptr(self, subtracted: NonNull<T>) -> usize
+=======
+    #[stable(feature = "ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
+    pub const unsafe fn offset_from_unsigned(self, subtracted: NonNull<T>) -> usize
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     where
         T: Sized,
     {
         // SAFETY: the caller must uphold the safety contract for `sub_ptr`.
+<<<<<<< HEAD
         unsafe { self.as_ptr().sub_ptr(subtracted.as_ptr()) }
+=======
+        unsafe { self.as_ptr().offset_from_unsigned(subtracted.as_ptr()) }
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     }
 
     /// Calculates the distance between two pointers within the same allocation, *where it's known that
@@ -1007,18 +1027,22 @@ impl<T: ?Sized> NonNull<T> {
     /// units of **bytes**.
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [`sub_ptr`][NonNull::sub_ptr] on it. See that method for
+    /// using [`sub_ptr`][NonNull::offset_from_unsigned] on it. See that method for
     /// documentation and safety requirements.
     ///
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
-    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
-    pub const unsafe fn byte_sub_ptr<U: ?Sized>(self, origin: NonNull<U>) -> usize {
+    #[stable(feature = "ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
+    pub const unsafe fn byte_offset_from_unsigned<U: ?Sized>(self, origin: NonNull<U>) -> usize {
         // SAFETY: the caller must uphold the safety contract for `byte_sub_ptr`.
+<<<<<<< HEAD
         unsafe { self.as_ptr().byte_sub_ptr(origin.as_ptr()) }
+=======
+        unsafe { self.as_ptr().byte_offset_from_unsigned(origin.as_ptr()) }
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     }
 
     /// Reads the value from `self` without moving it. This leaves the
@@ -1312,9 +1336,12 @@ impl<T: ?Sized> NonNull<T> {
     #[inline(always)]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
+<<<<<<< HEAD
     #[cfg_attr(kani, kani::modifies(self.as_ptr(), with.as_ptr()))]
     #[requires(ub_checks::can_dereference(self.as_ptr()) && ub_checks::can_write(self.as_ptr()))]
     #[requires(ub_checks::can_dereference(with.as_ptr()) && ub_checks::can_write(with.as_ptr()))]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     pub const unsafe fn swap(self, with: NonNull<T>)
     where
         T: Sized,

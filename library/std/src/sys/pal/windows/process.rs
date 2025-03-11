@@ -260,9 +260,13 @@ impl Command {
         needs_stdin: bool,
         proc_thread_attribute_list: Option<&ProcThreadAttributeList<'_>>,
     ) -> io::Result<(Process, StdioPipes)> {
+<<<<<<< HEAD
+=======
+        let env_saw_path = self.env.have_changed_path();
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
         let maybe_env = self.env.capture_if_changed();
 
-        let child_paths = if let Some(env) = maybe_env.as_ref() {
+        let child_paths = if env_saw_path && let Some(env) = maybe_env.as_ref() {
             env.get(&EnvKey::new("PATH")).map(|s| s.as_os_str())
         } else {
             None
@@ -435,9 +439,13 @@ fn resolve_exe<'a>(
 ) -> io::Result<Vec<u16>> {
     // Early return if there is no filename.
     if exe_path.is_empty() || path::has_trailing_slash(exe_path) {
+<<<<<<< HEAD
         return Err(
             io::const_error!(io::ErrorKind::InvalidInput, "program path has no file name",),
         );
+=======
+        return Err(io::const_error!(io::ErrorKind::InvalidInput, "program path has no file name"));
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     }
     // Test if the file name has the `exe` extension.
     // This does a case-insensitive `ends_with`.

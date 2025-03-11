@@ -332,6 +332,8 @@ impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
         unsupported()
     }
 }
+<<<<<<< HEAD
+<<<<<<<< HEAD:library/std/src/sys/net/connection/unsupported.rs
 
 #[allow(nonstandard_style)]
 pub mod netc {
@@ -367,3 +369,7 @@ pub mod netc {
         pub sin6_scope_id: u32,
     }
 }
+========
+>>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b:library/std/src/sys/net/connection/uefi/mod.rs
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b

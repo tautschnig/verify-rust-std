@@ -33,6 +33,10 @@
 #![deny(ffi_unwind_calls)]
 #![warn(rustdoc::unescaped_backticks)]
 #![warn(unreachable_pub)]
+<<<<<<< HEAD
+=======
+#![deny(unsafe_op_in_unsafe_fn)]
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]

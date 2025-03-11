@@ -10,7 +10,11 @@ use core::hint;
 #[cfg(not(test))]
 use core::ptr::{self, NonNull};
 
+<<<<<<< HEAD
 extern "Rust" {
+=======
+unsafe extern "Rust" {
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     // These are the magic symbols to call the global allocator. rustc generates
     // them to call `__rg_alloc` etc. if there is a `#[global_allocator]` attribute
     // (the code expanding that attribute macro generates those functions), or to call
@@ -355,7 +359,7 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 // # Allocation error handler
 
 #[cfg(not(no_global_oom_handling))]
-extern "Rust" {
+unsafe extern "Rust" {
     // This is the magic symbol to call the global alloc error handler. rustc generates
     // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
     // default implementations below (`__rdl_oom`) otherwise.
@@ -426,7 +430,7 @@ pub mod __alloc_error_handler {
     // `#[alloc_error_handler]`.
     #[rustc_std_internal_symbol]
     pub unsafe fn __rdl_oom(size: usize, _align: usize) -> ! {
-        extern "Rust" {
+        unsafe extern "Rust" {
             // This symbol is emitted by rustc next to __rust_alloc_error_handler.
             // Its value depends on the -Zoom={panic,abort} compiler option.
             static __rust_alloc_error_handler_should_panic: u8;

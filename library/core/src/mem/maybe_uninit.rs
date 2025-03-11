@@ -98,7 +98,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///
 /// unsafe fn make_vec(out: *mut Vec<i32>) {
 ///     // `write` does not drop the old contents, which is important.
-///     out.write(vec![1, 2, 3]);
+///     unsafe { out.write(vec![1, 2, 3]); }
 /// }
 ///
 /// let mut v = MaybeUninit::uninit();
@@ -331,6 +331,7 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
 
+<<<<<<< HEAD
     /// Creates a new array of `MaybeUninit<T>` items, in an uninitialized state.
     ///
     /// Note: in a future Rust version this method may become unnecessary
@@ -367,6 +368,8 @@ impl<T> MaybeUninit<T> {
         [const { MaybeUninit::uninit() }; N]
     }
 
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
     /// filled with `0` bytes. It depends on `T` whether that already makes for
     /// proper initialization. For example, `MaybeUninit<usize>::zeroed()` is initialized,
@@ -844,7 +847,7 @@ impl<T> MaybeUninit<T> {
     /// # #![allow(unexpected_cfgs)]
     /// use std::mem::MaybeUninit;
     ///
-    /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { *buf = [0; 1024] }
+    /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { unsafe { *buf = [0; 1024] } }
     /// # #[cfg(FALSE)]
     /// extern "C" {
     ///     /// Initializes *all* the bytes of the input buffer.
@@ -1041,7 +1044,10 @@ impl<T> MaybeUninit<T> {
 
     /// Deprecated version of [`slice::assume_init_ref`].
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+<<<<<<< HEAD
     #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     #[deprecated(
         note = "replaced by inherent assume_init_ref method; will eventually be removed",
         since = "1.83.0"
@@ -1053,7 +1059,10 @@ impl<T> MaybeUninit<T> {
 
     /// Deprecated version of [`slice::assume_init_mut`].
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+<<<<<<< HEAD
     #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     #[deprecated(
         note = "replaced by inherent assume_init_mut method; will eventually be removed",
         since = "1.83.0"
@@ -1326,7 +1335,10 @@ impl<T> [MaybeUninit<T>] {
     ///
     /// [`write_clone_of_slice`]: slice::write_clone_of_slice
     #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+<<<<<<< HEAD
     #[rustc_const_unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     pub const fn write_copy_of_slice(&mut self, src: &[T]) -> &mut [T]
     where
         T: Copy,

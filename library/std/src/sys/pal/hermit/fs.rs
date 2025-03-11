@@ -304,16 +304,24 @@ impl OpenOptions {
             (true, false) => {}
             (false, false) => {
                 if self.truncate || self.create || self.create_new {
+<<<<<<< HEAD
                     return Err(
                         io::const_error!(ErrorKind::InvalidInput, "invalid creation mode",),
                     );
+=======
+                    return Err(io::const_error!(ErrorKind::InvalidInput, "invalid creation mode"));
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
                 }
             }
             (_, true) => {
                 if self.truncate && !self.create_new {
+<<<<<<< HEAD
                     return Err(
                         io::const_error!(ErrorKind::InvalidInput, "invalid creation mode",),
                     );
+=======
+                    return Err(io::const_error!(ErrorKind::InvalidInput, "invalid creation mode"));
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
                 }
             }
         }
@@ -423,6 +431,10 @@ impl File {
 
     pub fn seek(&self, _pos: SeekFrom) -> io::Result<u64> {
         Err(Error::from_raw_os_error(22))
+    }
+
+    pub fn tell(&self) -> io::Result<u64> {
+        self.seek(SeekFrom::Current(0))
     }
 
     pub fn duplicate(&self) -> io::Result<File> {

@@ -213,10 +213,10 @@ pub macro assert_matches {
 /// #![feature(cfg_match)]
 ///
 /// cfg_match! {
-///     cfg(unix) => {
+///     unix => {
 ///         fn foo() { /* unix specific functionality */ }
 ///     }
-///     cfg(target_pointer_width = "32") => {
+///     target_pointer_width = "32" => {
 ///         fn foo() { /* non-unix, 32-bit functionality */ }
 ///     }
 ///     _ => {
@@ -224,65 +224,41 @@ pub macro assert_matches {
 ///     }
 /// }
 /// ```
+<<<<<<< HEAD
 #[cfg(bootstrap)]
+=======
+///
+/// If desired, it is possible to return expressions through the use of surrounding braces:
+///
+/// ```
+/// #![feature(cfg_match)]
+///
+/// let _some_string = cfg_match! {{
+///     unix => { "With great power comes great electricity bills" }
+///     _ => { "Behind every successful diet is an unwatched pizza" }
+/// }};
+/// ```
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[rustc_diagnostic_item = "cfg_match"]
 pub macro cfg_match {
-    // with a final wildcard
-    (
-        $(cfg($initial_meta:meta) => { $($initial_tokens:tt)* })+
-        _ => { $($extra_tokens:tt)* }
-    ) => {
-        cfg_match! {
-            @__items ();
-            $((($initial_meta) ($($initial_tokens)*)),)+
-            (() ($($extra_tokens)*)),
-        }
+    ({ $($tt:tt)* }) => {{
+        cfg_match! { $($tt)* }
+    }},
+    (_ => { $($output:tt)* }) => {
+        $($output)*
     },
-
-    // without a final wildcard
     (
-        $(cfg($extra_meta:meta) => { $($extra_tokens:tt)* })*
+        $cfg:meta => $output:tt
+        $($( $rest:tt )+)?
     ) => {
-        cfg_match! {
-            @__items ();
-            $((($extra_meta) ($($extra_tokens)*)),)*
-        }
+        #[cfg($cfg)]
+        cfg_match! { _ => $output }
+        $(
+            #[cfg(not($cfg))]
+            cfg_match! { $($rest)+ }
+        )?
     },
-
-    // Internal and recursive macro to emit all the items
-    //
-    // Collects all the previous cfgs in a list at the beginning, so they can be
-    // negated. After the semicolon is all the remaining items.
-    (@__items ($($_:meta,)*);) => {},
-    (
-        @__items ($($no:meta,)*);
-        (($($yes:meta)?) ($($tokens:tt)*)),
-        $($rest:tt,)*
-    ) => {
-        // Emit all items within one block, applying an appropriate #[cfg]. The
-        // #[cfg] will require all `$yes` matchers specified and must also negate
-        // all previous matchers.
-        #[cfg(all(
-            $($yes,)?
-            not(any($($no),*))
-        ))]
-        cfg_match! { @__identity $($tokens)* }
-
-        // Recurse to emit all other items in `$rest`, and when we do so add all
-        // our `$yes` matchers to the list of `$no` matchers as future emissions
-        // will have to negate everything we just matched as well.
-        cfg_match! {
-            @__items ($($no,)* $($yes,)?);
-            $($rest,)*
-        }
-    },
-
-    // Internal macro to make __apply work out right for different match types,
-    // because of how macros match/expand stuff.
-    (@__identity $($tokens:tt)*) => {
-        $($tokens)*
-    }
 }
 
 /// A macro for defining `#[cfg]` match-like statements.
@@ -1782,7 +1758,10 @@ pub(crate) mod builtin {
     /// The attribute carries an argument token-tree which is
     /// eventually parsed as a unary closure expression that is
     /// invoked on a reference to the return value.
+<<<<<<< HEAD
     #[cfg(not(bootstrap))]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     #[unstable(feature = "contracts", issue = "128044")]
     #[allow_internal_unstable(contracts_internals)]
     #[rustc_builtin_macro]
@@ -1795,7 +1774,10 @@ pub(crate) mod builtin {
     /// The attribute carries an argument token-tree which is
     /// eventually parsed as an boolean expression with access to the
     /// function's formal parameters
+<<<<<<< HEAD
     #[cfg(not(bootstrap))]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     #[unstable(feature = "contracts", issue = "128044")]
     #[allow_internal_unstable(contracts_internals)]
     #[rustc_builtin_macro]

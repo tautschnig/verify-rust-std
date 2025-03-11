@@ -284,7 +284,11 @@ impl Once {
     /// If this [`Once`] has been poisoned because an initialization closure has
     /// panicked, this method will also panic. Use [`wait_force`](Self::wait_force)
     /// if this behavior is not desired.
+<<<<<<< HEAD
     #[stable(feature = "once_wait", since = "CURRENT_RUSTC_VERSION")]
+=======
+    #[stable(feature = "once_wait", since = "1.86.0")]
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     pub fn wait(&self) {
         if !self.inner.is_completed() {
             self.inner.wait(false);
@@ -293,7 +297,11 @@ impl Once {
 
     /// Blocks the current thread until initialization has completed, ignoring
     /// poisoning.
+<<<<<<< HEAD
     #[stable(feature = "once_wait", since = "CURRENT_RUSTC_VERSION")]
+=======
+    #[stable(feature = "once_wait", since = "1.86.0")]
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     pub fn wait_force(&self) {
         if !self.inner.is_completed() {
             self.inner.wait(true);

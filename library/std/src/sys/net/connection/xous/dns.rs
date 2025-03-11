@@ -123,6 +123,10 @@ impl TryFrom<(&str, u16)> for LookupHost {
     type Error = io::Error;
 
     fn try_from(v: (&str, u16)) -> io::Result<LookupHost> {
+<<<<<<< HEAD
         lookup(v.0, v.1).map_err(|_e| io::const_error!(io::ErrorKind::InvalidInput, &"DNS failure"))
+=======
+        lookup(v.0, v.1).map_err(|_e| io::const_error!(io::ErrorKind::InvalidInput, "DNS failure"))
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     }
 }

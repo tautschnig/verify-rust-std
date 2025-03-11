@@ -10,11 +10,16 @@
 ///
 /// `idx` must be in-bounds of the vector.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_insert<T, U>(_x: T, _idx: u32, _val: U) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub const unsafe fn simd_insert<T, U>(_x: T, _idx: u32, _val: U) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Extracts an element from a vector.
 ///
@@ -24,41 +29,61 @@ pub unsafe fn simd_insert<T, U>(_x: T, _idx: u32, _val: U) -> T {
 ///
 /// `idx` must be in-bounds of the vector.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_extract<T, U>(_x: T, _idx: u32) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub const unsafe fn simd_extract<T, U>(_x: T, _idx: u32) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Adds two simd vectors elementwise.
 ///
 /// `T` must be a vector of integer or floating point primitive types.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_add<T>(_x: T, _y: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_add<T>(_x: T, _y: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Subtracts `rhs` from `lhs` elementwise.
 ///
 /// `T` must be a vector of integer or floating point primitive types.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_sub<T>(_lhs: T, _rhs: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_sub<T>(_lhs: T, _rhs: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Multiplies two simd vectors elementwise.
 ///
 /// `T` must be a vector of integer or floating point primitive types.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_mul<T>(_x: T, _y: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_mul<T>(_x: T, _y: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Divides `lhs` by `rhs` elementwise.
 ///
@@ -68,11 +93,16 @@ pub unsafe fn simd_mul<T>(_x: T, _y: T) -> T {
 /// For integers, `rhs` must not contain any zero elements.
 /// Additionally for signed integers, `<int>::MIN / -1` is undefined behavior.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_div<T>(_lhs: T, _rhs: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_div<T>(_lhs: T, _rhs: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Returns remainder of two vectors elementwise.
 ///
@@ -82,11 +112,16 @@ pub unsafe fn simd_div<T>(_lhs: T, _rhs: T) -> T {
 /// For integers, `rhs` must not contain any zero elements.
 /// Additionally for signed integers, `<int>::MIN / -1` is undefined behavior.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_rem<T>(_lhs: T, _rhs: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_rem<T>(_lhs: T, _rhs: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Shifts vector left elementwise, with UB on overflow.
 ///
@@ -98,11 +133,16 @@ pub unsafe fn simd_rem<T>(_lhs: T, _rhs: T) -> T {
 ///
 /// Each element of `rhs` must be less than `<int>::BITS`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_shl<T>(_lhs: T, _rhs: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_shl<T>(_lhs: T, _rhs: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Shifts vector right elementwise, with UB on overflow.
 ///
@@ -114,41 +154,61 @@ pub unsafe fn simd_shl<T>(_lhs: T, _rhs: T) -> T {
 ///
 /// Each element of `rhs` must be less than `<int>::BITS`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_shr<T>(_lhs: T, _rhs: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_shr<T>(_lhs: T, _rhs: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// "Ands" vectors elementwise.
 ///
 /// `T` must be a vector of integer primitive types.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_and<T>(_x: T, _y: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_and<T>(_x: T, _y: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// "Ors" vectors elementwise.
 ///
 /// `T` must be a vector of integer primitive types.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_or<T>(_x: T, _y: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_or<T>(_x: T, _y: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// "Exclusive ors" vectors elementwise.
 ///
 /// `T` must be a vector of integer primitive types.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_xor<T>(_x: T, _y: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_xor<T>(_x: T, _y: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Numerically casts a vector, elementwise.
 ///
@@ -169,11 +229,16 @@ pub unsafe fn simd_xor<T>(_x: T, _y: T) -> T {
 /// * Not be infinite
 /// * Be representable in the return type, after truncating off its fractional part
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_cast<T, U>(_x: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_cast<T, U>(_x: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Numerically casts a vector, elementwise.
 ///
@@ -187,11 +252,16 @@ pub unsafe fn simd_cast<T, U>(_x: T) -> U {
 /// When casting integers to floats, the result is rounded.
 /// Otherwise, truncates or extends the value, maintaining the sign for signed integers.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_as<T, U>(_x: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_as<T, U>(_x: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Negates a vector elementwise.
 ///
@@ -199,21 +269,31 @@ pub unsafe fn simd_as<T, U>(_x: T) -> U {
 ///
 /// Rust panics for `-<int>::Min` due to overflow, but it is not UB with this intrinsic.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_neg<T>(_x: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_neg<T>(_x: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Returns absolute value of a vector, elementwise.
 ///
 /// `T` must be a vector of floating-point primitive types.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_fabs<T>(_x: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_fabs<T>(_x: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Returns the minimum of two vectors, elementwise.
 ///
@@ -221,11 +301,16 @@ pub unsafe fn simd_fabs<T>(_x: T) -> T {
 ///
 /// Follows IEEE-754 `minNum` semantics.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_fmin<T>(_x: T, _y: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_fmin<T>(_x: T, _y: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Returns the maximum of two vectors, elementwise.
 ///
@@ -233,11 +318,16 @@ pub unsafe fn simd_fmin<T>(_x: T, _y: T) -> T {
 ///
 /// Follows IEEE-754 `maxNum` semantics.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_fmax<T>(_x: T, _y: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_fmax<T>(_x: T, _y: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Tests elementwise equality of two vectors.
 ///
@@ -247,11 +337,16 @@ pub unsafe fn simd_fmax<T>(_x: T, _y: T) -> T {
 ///
 /// Returns `0` for false and `!0` for true.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_eq<T, U>(_x: T, _y: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_eq<T, U>(_x: T, _y: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Tests elementwise inequality equality of two vectors.
 ///
@@ -261,11 +356,16 @@ pub unsafe fn simd_eq<T, U>(_x: T, _y: T) -> U {
 ///
 /// Returns `0` for false and `!0` for true.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_ne<T, U>(_x: T, _y: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_ne<T, U>(_x: T, _y: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Tests if `x` is less than `y`, elementwise.
 ///
@@ -275,11 +375,16 @@ pub unsafe fn simd_ne<T, U>(_x: T, _y: T) -> U {
 ///
 /// Returns `0` for false and `!0` for true.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_lt<T, U>(_x: T, _y: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_lt<T, U>(_x: T, _y: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Tests if `x` is less than or equal to `y`, elementwise.
 ///
@@ -289,11 +394,16 @@ pub unsafe fn simd_lt<T, U>(_x: T, _y: T) -> U {
 ///
 /// Returns `0` for false and `!0` for true.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_le<T, U>(_x: T, _y: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_le<T, U>(_x: T, _y: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Tests if `x` is greater than `y`, elementwise.
 ///
@@ -303,11 +413,16 @@ pub unsafe fn simd_le<T, U>(_x: T, _y: T) -> U {
 ///
 /// Returns `0` for false and `!0` for true.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_gt<T, U>(_x: T, _y: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_gt<T, U>(_x: T, _y: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Tests if `x` is greater than or equal to `y`, elementwise.
 ///
@@ -317,11 +432,16 @@ pub unsafe fn simd_gt<T, U>(_x: T, _y: T) -> U {
 ///
 /// Returns `0` for false and `!0` for true.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_ge<T, U>(_x: T, _y: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_ge<T, U>(_x: T, _y: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Shuffles two vectors by const indices.
 ///
@@ -336,11 +456,16 @@ pub unsafe fn simd_ge<T, U>(_x: T, _y: T) -> U {
 /// is the concatenation of `x` and `y`. It is a compile-time error if `idx[i]` is out-of-bounds
 /// of `xy`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_shuffle<T, U, V>(_x: T, _y: T, _idx: U) -> V {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_shuffle<T, U, V>(_x: T, _y: T, _idx: U) -> V;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Reads a vector of pointers.
 ///
@@ -360,11 +485,16 @@ pub unsafe fn simd_shuffle<T, U, V>(_x: T, _y: T, _idx: U) -> V {
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_gather<T, U, V>(_val: T, _ptr: U, _mask: V) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_gather<T, U, V>(_val: T, _ptr: U, _mask: V) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Writes to a vector of pointers.
 ///
@@ -387,11 +517,16 @@ pub unsafe fn simd_gather<T, U, V>(_val: T, _ptr: U, _mask: V) -> T {
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_scatter<T, U, V>(_val: T, _ptr: U, _mask: V) {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_scatter<T, U, V>(_val: T, _ptr: U, _mask: V);
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Reads a vector of pointers.
 ///
@@ -413,11 +548,16 @@ pub unsafe fn simd_scatter<T, U, V>(_val: T, _ptr: U, _mask: V) {
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_masked_load<V, U, T>(_mask: V, _ptr: U, _val: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_masked_load<V, U, T>(_mask: V, _ptr: U, _val: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Writes to a vector of pointers.
 ///
@@ -438,21 +578,31 @@ pub unsafe fn simd_masked_load<V, U, T>(_mask: V, _ptr: U, _val: T) -> T {
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_masked_store<V, U, T>(_mask: V, _ptr: U, _val: T) {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_masked_store<V, U, T>(_mask: V, _ptr: U, _val: T);
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Adds two simd vectors elementwise, with saturation.
 ///
 /// `T` must be a vector of integer primitive types.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_saturating_add<T>(_x: T, _y: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_saturating_add<T>(_x: T, _y: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Subtracts two simd vectors elementwise, with saturation.
 ///
@@ -460,11 +610,16 @@ pub unsafe fn simd_saturating_add<T>(_x: T, _y: T) -> T {
 ///
 /// Subtract `rhs` from `lhs`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_saturating_sub<T>(_lhs: T, _rhs: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_saturating_sub<T>(_lhs: T, _rhs: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Adds elements within a vector from left to right.
 ///
@@ -474,11 +629,16 @@ pub unsafe fn simd_saturating_sub<T>(_lhs: T, _rhs: T) -> T {
 ///
 /// Starting with the value `y`, add the elements of `x` and accumulate.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_add_ordered<T, U>(_x: T, _y: U) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_reduce_add_ordered<T, U>(_x: T, _y: U) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Adds elements within a vector in arbitrary order. May also be re-associated with
 /// unordered additions on the inputs/outputs.
@@ -487,11 +647,16 @@ pub unsafe fn simd_reduce_add_ordered<T, U>(_x: T, _y: U) -> U {
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_add_unordered<T, U>(_x: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_reduce_add_unordered<T, U>(_x: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Multiplies elements within a vector from left to right.
 ///
@@ -501,11 +666,16 @@ pub unsafe fn simd_reduce_add_unordered<T, U>(_x: T) -> U {
 ///
 /// Starting with the value `y`, multiply the elements of `x` and accumulate.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_mul_ordered<T, U>(_x: T, _y: U) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_reduce_mul_ordered<T, U>(_x: T, _y: U) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Multiplies elements within a vector in arbitrary order. May also be re-associated with
 /// unordered additions on the inputs/outputs.
@@ -514,11 +684,16 @@ pub unsafe fn simd_reduce_mul_ordered<T, U>(_x: T, _y: U) -> U {
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_mul_unordered<T, U>(_x: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_reduce_mul_unordered<T, U>(_x: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Checks if all mask values are true.
 ///
@@ -527,11 +702,16 @@ pub unsafe fn simd_reduce_mul_unordered<T, U>(_x: T) -> U {
 /// # Safety
 /// `x` must contain only `0` or `!0`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_all<T>(_x: T) -> bool {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_reduce_all<T>(_x: T) -> bool;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Checks if any mask value is true.
 ///
@@ -540,11 +720,16 @@ pub unsafe fn simd_reduce_all<T>(_x: T) -> bool {
 /// # Safety
 /// `x` must contain only `0` or `!0`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_any<T>(_x: T) -> bool {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_reduce_any<T>(_x: T) -> bool;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Returns the maximum element of a vector.
 ///
@@ -554,11 +739,16 @@ pub unsafe fn simd_reduce_any<T>(_x: T) -> bool {
 ///
 /// For floating-point values, uses IEEE-754 `maxNum`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_max<T, U>(_x: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_reduce_max<T, U>(_x: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Returns the minimum element of a vector.
 ///
@@ -568,11 +758,16 @@ pub unsafe fn simd_reduce_max<T, U>(_x: T) -> U {
 ///
 /// For floating-point values, uses IEEE-754 `minNum`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_min<T, U>(_x: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_reduce_min<T, U>(_x: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Logical "ands" all elements together.
 ///
@@ -580,11 +775,16 @@ pub unsafe fn simd_reduce_min<T, U>(_x: T) -> U {
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_and<T, U>(_x: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_reduce_and<T, U>(_x: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Logical "ors" all elements together.
 ///
@@ -592,11 +792,16 @@ pub unsafe fn simd_reduce_and<T, U>(_x: T) -> U {
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_or<T, U>(_x: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_reduce_or<T, U>(_x: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Logical "exclusive ors" all elements together.
 ///
@@ -604,11 +809,16 @@ pub unsafe fn simd_reduce_or<T, U>(_x: T) -> U {
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_xor<T, U>(_x: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_reduce_xor<T, U>(_x: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Truncates an integer vector to a bitmask.
 ///
@@ -644,11 +854,16 @@ pub unsafe fn simd_reduce_xor<T, U>(_x: T) -> U {
 /// # Safety
 /// `x` must contain only `0` and `!0`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_bitmask<T, U>(_x: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_bitmask<T, U>(_x: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Selects elements from a mask.
 ///
@@ -663,11 +878,16 @@ pub unsafe fn simd_bitmask<T, U>(_x: T) -> U {
 /// # Safety
 /// `mask` must only contain `0` and `!0`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_select<M, T>(_mask: M, _if_true: T, _if_false: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_select<M, T>(_mask: M, _if_true: T, _if_false: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Selects elements from a bitmask.
 ///
@@ -684,11 +904,16 @@ pub unsafe fn simd_select<M, T>(_mask: M, _if_true: T, _if_false: T) -> T {
 /// # Safety
 /// Padding bits must be all zero.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_select_bitmask<M, T>(_m: M, _yes: T, _no: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_select_bitmask<M, T>(_m: M, _yes: T, _no: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Calculates the offset from a pointer vector elementwise, potentially
 /// wrapping.
@@ -699,21 +924,31 @@ pub unsafe fn simd_select_bitmask<M, T>(_m: M, _yes: T, _no: T) -> T {
 ///
 /// Operates as if by `<ptr>::wrapping_offset`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_arith_offset<T, U>(_ptr: T, _offset: U) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_arith_offset<T, U>(_ptr: T, _offset: U) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Casts a vector of pointers.
 ///
 /// `T` and `U` must be vectors of pointers with the same number of elements.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_cast_ptr<T, U>(_ptr: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_cast_ptr<T, U>(_ptr: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Exposes a vector of pointers as a vector of addresses.
 ///
@@ -721,11 +956,16 @@ pub unsafe fn simd_cast_ptr<T, U>(_ptr: T) -> U {
 ///
 /// `U` must be a vector of `usize` with the same length as `T`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_expose_provenance<T, U>(_ptr: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_expose_provenance<T, U>(_ptr: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Creates a vector of pointers from a vector of addresses.
 ///
@@ -733,123 +973,183 @@ pub unsafe fn simd_expose_provenance<T, U>(_ptr: T) -> U {
 ///
 /// `U` must be a vector of pointers, with the same length as `T`.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_with_exposed_provenance<T, U>(_addr: T) -> U {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_with_exposed_provenance<T, U>(_addr: T) -> U;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Swaps bytes of each element.
 ///
 /// `T` must be a vector of integers.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_bswap<T>(_x: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_bswap<T>(_x: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Reverses bits of each element.
 ///
 /// `T` must be a vector of integers.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_bitreverse<T>(_x: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_bitreverse<T>(_x: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Counts the leading zeros of each element.
 ///
 /// `T` must be a vector of integers.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_ctlz<T>(_x: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_ctlz<T>(_x: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Counts the number of ones in each element.
 ///
 /// `T` must be a vector of integers.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_ctpop<T>(_x: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_ctpop<T>(_x: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Counts the trailing zeros of each element.
 ///
 /// `T` must be a vector of integers.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_cttz<T>(_x: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_cttz<T>(_x: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Rounds up each element to the next highest integer-valued float.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_ceil<T>(_x: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_ceil<T>(_x: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Rounds down each element to the next lowest integer-valued float.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_floor<T>(_x: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_floor<T>(_x: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Rounds each element to the closest integer-valued float.
 /// Ties are resolved by rounding away from 0.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_round<T>(_x: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_round<T>(_x: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Returns the integer part of each element as an integer-valued float.
 /// In other words, non-integer values are truncated towards zero.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_trunc<T>(_x: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_trunc<T>(_x: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Takes the square root of each element.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_fsqrt<T>(_x: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_fsqrt<T>(_x: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Computes `(x*y) + z` for each element, but without any intermediate rounding.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_fma<T>(_x: T, _y: T, _z: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_fma<T>(_x: T, _y: T, _z: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// Computes `(x*y) + z` for each element, non-deterministically executing either
 /// a fused multiply-add or two operations with rounding of the intermediate result.
@@ -863,78 +1163,118 @@ pub unsafe fn simd_fma<T>(_x: T, _y: T, _z: T) -> T {
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_relaxed_fma<T>(_x: T, _y: T, _z: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_relaxed_fma<T>(_x: T, _y: T, _z: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 // Computes the sine of each element.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_fsin<T>(_a: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_fsin<T>(_a: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 // Computes the cosine of each element.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_fcos<T>(_a: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_fcos<T>(_a: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 // Computes the exponential function of each element.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_fexp<T>(_a: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_fexp<T>(_a: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 // Computes 2 raised to the power of each element.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_fexp2<T>(_a: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_fexp2<T>(_a: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 // Computes the base 10 logarithm of each element.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_flog10<T>(_a: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_flog10<T>(_a: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 // Computes the base 2 logarithm of each element.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_flog2<T>(_a: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_flog2<T>(_a: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 // Computes the natural logarithm of each element.
 ///
 /// `T` must be a vector of floats.
 #[rustc_intrinsic]
+<<<<<<< HEAD
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn simd_flog<T>(_a: T) -> T {
     unreachable!()
 }
+=======
+#[rustc_nounwind]
+pub unsafe fn simd_flog<T>(_a: T) -> T;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b

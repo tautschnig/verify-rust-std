@@ -6,6 +6,7 @@ mod tests;
 pub use core::net::{SocketAddr, SocketAddrV4, SocketAddrV6};
 
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+<<<<<<< HEAD
 use crate::sys::net::{LookupHost, netc as c};
 use crate::sys_common::{FromInner, IntoInner};
 use crate::{io, iter, mem, option, slice, vec};
@@ -50,6 +51,10 @@ impl IntoInner<c::sockaddr_in6> for SocketAddrV6 {
         }
     }
 }
+=======
+use crate::sys::net::LookupHost;
+use crate::{io, iter, option, slice, vec};
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 
 /// A trait for objects which can be converted or resolved to one or more
 /// [`SocketAddr`] values.

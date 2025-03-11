@@ -13,7 +13,7 @@ macro_rules! unimpl {
     () => {
         return Err(io::const_error!(
             io::ErrorKind::Unsupported,
-            &"This function is not yet implemented",
+            "This function is not yet implemented",
         ));
     };
 }
@@ -72,18 +72,26 @@ impl UdpSocket {
             if response[0] != 0 || valid == 0 {
                 let errcode = response[1];
                 if errcode == NetError::SocketInUse as u8 {
+<<<<<<< HEAD
                     return Err(io::const_error!(io::ErrorKind::ResourceBusy, &"Socket in use"));
+=======
+                    return Err(io::const_error!(io::ErrorKind::ResourceBusy, "Socket in use"));
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
                 } else if errcode == NetError::Invalid as u8 {
                     return Err(io::const_error!(
                         io::ErrorKind::InvalidInput,
-                        &"Port can't be 0 or invalid address"
+                        "Port can't be 0 or invalid address",
                     ));
                 } else if errcode == NetError::LibraryError as u8 {
+<<<<<<< HEAD
                     return Err(io::const_error!(io::ErrorKind::Other, &"Library error"));
+=======
+                    return Err(io::const_error!(io::ErrorKind::Other, "Library error"));
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
                 } else {
                     return Err(io::const_error!(
                         io::ErrorKind::Other,
-                        &"Unable to connect or internal error"
+                        "Unable to connect or internal error",
                     ));
                 }
             }
@@ -98,13 +106,21 @@ impl UdpSocket {
                 nonblocking: Cell::new(false),
             });
         }
+<<<<<<< HEAD
         Err(io::const_error!(io::ErrorKind::InvalidInput, &"Invalid response"))
+=======
+        Err(io::const_error!(io::ErrorKind::InvalidInput, "Invalid response"))
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         match self.remote.get() {
             Some(dest) => Ok(dest),
+<<<<<<< HEAD
             None => Err(io::const_error!(io::ErrorKind::NotConnected, &"No peer specified")),
+=======
+            None => Err(io::const_error!(io::ErrorKind::NotConnected, "No peer specified")),
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
         }
     }
 
@@ -141,6 +157,7 @@ impl UdpSocket {
             if receive_request.raw[0] != 0 {
                 // error case
                 if receive_request.raw[1] == NetError::TimedOut as u8 {
+<<<<<<< HEAD
                     return Err(io::const_error!(io::ErrorKind::TimedOut, &"recv timed out",));
                 } else if receive_request.raw[1] == NetError::WouldBlock as u8 {
                     return Err(io::const_error!(io::ErrorKind::WouldBlock, &"recv would block",));
@@ -148,6 +165,15 @@ impl UdpSocket {
                     return Err(io::const_error!(io::ErrorKind::Other, &"Library error"));
                 } else {
                     return Err(io::const_error!(io::ErrorKind::Other, &"library error",));
+=======
+                    return Err(io::const_error!(io::ErrorKind::TimedOut, "recv timed out"));
+                } else if receive_request.raw[1] == NetError::WouldBlock as u8 {
+                    return Err(io::const_error!(io::ErrorKind::WouldBlock, "recv would block"));
+                } else if receive_request.raw[1] == NetError::LibraryError as u8 {
+                    return Err(io::const_error!(io::ErrorKind::Other, "Library error"));
+                } else {
+                    return Err(io::const_error!(io::ErrorKind::Other, "library error"));
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
                 }
             } else {
                 let rr = &receive_request.raw;
@@ -170,7 +196,11 @@ impl UdpSocket {
                         port,
                     )
                 } else {
+<<<<<<< HEAD
                     return Err(io::const_error!(io::ErrorKind::Other, &"library error",));
+=======
+                    return Err(io::const_error!(io::ErrorKind::Other, "library error"));
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
                 };
                 for (&s, d) in rr[22..22 + rxlen as usize].iter().zip(buf.iter_mut()) {
                     *d = s;
@@ -178,7 +208,11 @@ impl UdpSocket {
                 Ok((rxlen as usize, addr))
             }
         } else {
+<<<<<<< HEAD
             Err(io::const_error!(io::ErrorKind::InvalidInput, &"Unable to recv"))
+=======
+            Err(io::const_error!(io::ErrorKind::InvalidInput, "Unable to recv"))
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
         }
     }
 
@@ -208,7 +242,11 @@ impl UdpSocket {
         if let Some(addr) = self.remote.get() {
             self.send_to(buf, &addr)
         } else {
+<<<<<<< HEAD
             Err(io::const_error!(io::ErrorKind::NotConnected, &"No remote specified"))
+=======
+            Err(io::const_error!(io::ErrorKind::NotConnected, "No remote specified"))
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
         }
     }
 
@@ -281,19 +319,23 @@ impl UdpSocket {
                         if errcode == NetError::SocketInUse as u8 {
                             return Err(io::const_error!(
                                 io::ErrorKind::ResourceBusy,
-                                &"Socket in use"
+                                "Socket in use",
                             ));
                         } else if errcode == NetError::Invalid as u8 {
                             return Err(io::const_error!(
                                 io::ErrorKind::InvalidInput,
-                                &"Socket not valid"
+                                "Socket not valid",
                             ));
                         } else if errcode == NetError::LibraryError as u8 {
+<<<<<<< HEAD
                             return Err(io::const_error!(io::ErrorKind::Other, &"Library error"));
+=======
+                            return Err(io::const_error!(io::ErrorKind::Other, "Library error"));
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
                         } else {
                             return Err(io::const_error!(
                                 io::ErrorKind::Other,
-                                &"Unable to connect"
+                                "Unable to connect",
                             ));
                         }
                     } else {
@@ -303,16 +345,24 @@ impl UdpSocket {
                 }
                 Err(crate::os::xous::ffi::Error::ServerQueueFull) => {
                     if now.elapsed() >= write_timeout {
+<<<<<<< HEAD
                         return Err(io::const_error!(
                             io::ErrorKind::WouldBlock,
                             &"Write timed out"
                         ));
+=======
+                        return Err(io::const_error!(io::ErrorKind::WouldBlock, "Write timed out"));
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
                     } else {
                         // question: do we want to do something a bit more gentle than immediately retrying?
                         crate::thread::yield_now();
                     }
                 }
+<<<<<<< HEAD
                 _ => return Err(io::const_error!(io::ErrorKind::Other, &"Library error")),
+=======
+                _ => return Err(io::const_error!(io::ErrorKind::Other, "Library error")),
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
             }
         }
     }
@@ -360,13 +410,17 @@ impl UdpSocket {
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         if ttl > 255 {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "TTL must be less than 256"));
+            return Err(io::const_error!(io::ErrorKind::InvalidInput, "TTL must be less than 256"));
         }
         crate::os::xous::ffi::blocking_scalar(
             services::net_server(),
             services::NetBlockingScalar::StdSetTtlUdp(self.fd, ttl).into(),
         )
+<<<<<<< HEAD
         .or(Err(io::const_error!(io::ErrorKind::InvalidInput, &"Unexpected return value")))
+=======
+        .or(Err(io::const_error!(io::ErrorKind::InvalidInput, "Unexpected return value")))
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
         .map(|_| ())
     }
 
@@ -375,7 +429,11 @@ impl UdpSocket {
             services::net_server(),
             services::NetBlockingScalar::StdGetTtlUdp(self.fd).into(),
         )
+<<<<<<< HEAD
         .or(Err(io::const_error!(io::ErrorKind::InvalidInput, &"Unexpected return value")))
+=======
+        .or(Err(io::const_error!(io::ErrorKind::InvalidInput, "Unexpected return value")))
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
         .map(|res| res[0] as _)?)
     }
 
@@ -441,7 +499,7 @@ impl UdpSocket {
 
 impl fmt::Debug for UdpSocket {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "UDP listening on {:?} to {:?}", self.local, self.remote.get(),)
+        write!(f, "UDP listening on {:?} to {:?}", self.local, self.remote.get())
     }
 }
 

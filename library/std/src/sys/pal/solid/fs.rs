@@ -22,12 +22,17 @@ struct FileDesc {
 
 impl FileDesc {
     #[inline]
+    #[track_caller]
     fn new(fd: c_int) -> FileDesc {
+<<<<<<< HEAD
         assert_ne!(fd, -1i32);
         // Safety: we just asserted that the value is in the valid range and
         // isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
         let fd = unsafe { CIntNotMinusOne::new_unchecked(fd) };
         FileDesc { fd }
+=======
+        FileDesc { fd: CIntNotMinusOne::new(fd).expect("fd != -1") }
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     }
 
     #[inline]
@@ -312,7 +317,11 @@ fn cstr(path: &Path) -> io::Result<CString> {
     let wrapped_path = [SAFE_PREFIX, &path, &[0]].concat();
 
     CString::from_vec_with_nul(wrapped_path).map_err(|_| {
+<<<<<<< HEAD
         crate::io::const_error!(io::ErrorKind::InvalidInput, "path provided contains a nul byte",)
+=======
+        crate::io::const_error!(io::ErrorKind::InvalidInput, "path provided contains a nul byte")
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
     })
 }
 
@@ -455,8 +464,11 @@ impl File {
             abi::SOLID_FS_Lseek(self.fd.raw(), pos, whence)
         })
         .map_err(|e| e.as_io_error())?;
-
         // Get the new offset
+        self.tell()
+    }
+
+    pub fn tell(&self) -> io::Result<u64> {
         unsafe {
             let mut out_offset = MaybeUninit::uninit();
             error::SolidError::err_if_negative(abi::SOLID_FS_Ftell(

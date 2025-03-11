@@ -111,9 +111,15 @@ impl Drop for Mutex {
         // `PTHREAD_MUTEX_INITIALIZER`, which is valid at all locations. Thus,
         // this call always destroys a valid mutex.
         let r = unsafe { libc::pthread_mutex_destroy(self.raw()) };
+<<<<<<< HEAD
         if cfg!(target_os = "dragonfly") {
             // On DragonFly pthread_mutex_destroy() returns EINVAL if called on a
             // mutex that was just initialized with libc::PTHREAD_MUTEX_INITIALIZER.
+=======
+        if cfg!(any(target_os = "aix", target_os = "dragonfly")) {
+            // On AIX and DragonFly pthread_mutex_destroy() returns EINVAL if called
+            // on a mutex that was just initialized with libc::PTHREAD_MUTEX_INITIALIZER.
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
             // Once it is used (locked/unlocked) or pthread_mutex_init() is called,
             // this behaviour no longer occurs.
             debug_assert!(r == 0 || r == libc::EINVAL);

@@ -192,7 +192,10 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(strict_provenance_lints)]
+<<<<<<< HEAD
 #![feature(target_feature_11)]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
@@ -250,7 +253,10 @@ pub mod autodiff {
     pub use crate::macros::builtin::autodiff;
 }
 
+<<<<<<< HEAD
 #[cfg(not(bootstrap))]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 

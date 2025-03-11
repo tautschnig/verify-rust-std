@@ -32,6 +32,19 @@ macro_rules! define_valid_range_type {
         };
 
         impl $name {
+<<<<<<< HEAD
+=======
+            #[inline]
+            pub const fn new(val: $int) -> Option<Self> {
+                if (val as $uint) >= ($low as $uint) && (val as $uint) <= ($high as $uint) {
+                    // SAFETY: just checked the inclusive range
+                    Some(unsafe { $name(val) })
+                } else {
+                    None
+                }
+            }
+
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
             /// Constructs an instance of this type from the underlying integer
             /// primitive without checking whether its zero.
             ///

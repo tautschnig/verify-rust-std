@@ -92,7 +92,10 @@
 //
 // Library features:
 // tidy-alphabetical-start
+<<<<<<< HEAD
 #![cfg_attr(kani, feature(kani))]
+=======
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 #![cfg_attr(test, feature(str_as_str))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
@@ -106,6 +109,10 @@
 #![feature(box_uninit_write)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
+<<<<<<< HEAD
+=======
+#![feature(char_max_len)]
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
 #![feature(const_eval_select)]
@@ -137,7 +144,6 @@
 #![feature(pointer_like_trait)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
-#![feature(ptr_sub_ptr)]
 #![feature(set_ptr_value)]
 #![feature(sized_type_properties)]
 #![feature(slice_from_ptr_range)]
@@ -157,7 +163,6 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
-#![feature(vec_pop_if)]
 // tidy-alphabetical-end
 //
 // Language features:

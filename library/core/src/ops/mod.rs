@@ -182,6 +182,11 @@ pub use self::function::{Fn, FnMut, FnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::index::{Index, IndexMut};
 pub(crate) use self::index_range::IndexRange;
+<<<<<<< HEAD
+=======
+#[unstable(feature = "range_into_bounds", issue = "136903")]
+pub use self::range::IntoBounds;
+>>>>>>> 4fc84ab1659ac7975991ec71d645ebe7c240376b
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 #[unstable(feature = "one_sided_range", issue = "69780")]
