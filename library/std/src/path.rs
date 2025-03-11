@@ -3575,7 +3575,11 @@ impl Error for StripPrefixError {
 pub fn absolute<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     let path = path.as_ref();
     if path.as_os_str().is_empty() {
+<<<<<<< HEAD
         Err(io::const_error!(io::ErrorKind::InvalidInput, "cannot make an empty path absolute",))
+=======
+        Err(io::const_error!(io::ErrorKind::InvalidInput, "cannot make an empty path absolute"))
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
     } else {
         sys::path::absolute(path)
     }

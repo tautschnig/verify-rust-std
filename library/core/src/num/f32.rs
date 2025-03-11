@@ -747,8 +747,13 @@ impl f32 {
     /// [`MAX`]: Self::MAX
     #[inline]
     #[doc(alias = "nextUp")]
+<<<<<<< HEAD
     #[stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
+=======
+    #[stable(feature = "float_next_up_down", since = "1.86.0")]
+    #[rustc_const_stable(feature = "float_next_up_down", since = "1.86.0")]
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -798,8 +803,13 @@ impl f32 {
     /// [`MAX`]: Self::MAX
     #[inline]
     #[doc(alias = "nextDown")]
+<<<<<<< HEAD
     #[stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
+=======
+    #[stable(feature = "float_next_up_down", since = "1.86.0")]
+    #[rustc_const_stable(feature = "float_next_up_down", since = "1.86.0")]
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here

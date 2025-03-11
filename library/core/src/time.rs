@@ -23,8 +23,11 @@ use safety::{Invariant, ensures};
 
 use crate::fmt;
 use crate::iter::Sum;
+<<<<<<< HEAD
 #[cfg(kani)]
 use crate::kani;
+=======
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
 use crate::num::niche_types::Nanoseconds;
 use crate::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use crate::ub_checks::Invariant;
@@ -43,6 +46,7 @@ const HOURS_PER_DAY: u64 = 24;
 #[unstable(feature = "duration_units", issue = "120301")]
 const DAYS_PER_WEEK: u64 = 7;
 
+<<<<<<< HEAD
 #[unstable(feature = "ub_checks", issue = "none")]
 impl Invariant for Nanoseconds {
     fn is_safe(&self) -> bool {
@@ -50,6 +54,8 @@ impl Invariant for Nanoseconds {
     }
 }
 
+=======
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
 ///
@@ -1198,6 +1204,7 @@ impl Div<u32> for Duration {
     type Output = Duration;
 
     #[inline]
+    #[track_caller]
     fn div(self, rhs: u32) -> Duration {
         self.checked_div(rhs).expect("divide by zero error when dividing duration by scalar")
     }
@@ -1206,6 +1213,7 @@ impl Div<u32> for Duration {
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
 impl DivAssign<u32> for Duration {
     #[inline]
+    #[track_caller]
     fn div_assign(&mut self, rhs: u32) {
         *self = *self / rhs;
     }

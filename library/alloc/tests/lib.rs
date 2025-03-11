@@ -3,10 +3,14 @@
 #![feature(iter_array_chunks)]
 #![feature(assert_matches)]
 #![feature(btree_extract_if)]
+#![feature(char_max_len)]
 #![feature(cow_is_borrowed)]
 #![feature(core_intrinsics)]
 #![feature(downcast_unchecked)]
+<<<<<<< HEAD
 #![feature(extract_if)]
+=======
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
 #![feature(exact_size_is_empty)]
 #![feature(hashmap_internals)]
 #![feature(linked_list_cursors)]
@@ -28,7 +32,6 @@
 #![feature(string_remove_matches)]
 #![feature(const_btree_len)]
 #![feature(const_trait_impl)]
-#![feature(const_str_from_utf8)]
 #![feature(panic_update_hook)]
 #![feature(pointer_is_aligned_to)]
 #![feature(test)]
@@ -37,7 +40,10 @@
 #![feature(local_waker)]
 #![feature(str_as_str)]
 #![feature(strict_provenance_lints)]
+<<<<<<< HEAD
 #![feature(vec_pop_if)]
+=======
+>>>>>>> 30728aeafb88a31d3ab35f64dc75a07082413491
 #![feature(vec_deque_pop_if)]
 #![feature(unique_rc_arc)]
 #![feature(macro_metavar_expr_concat)]
