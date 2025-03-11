@@ -116,7 +116,6 @@ jobs:
           echo "MERGE_CONFLICTS=noop" >> $GITHUB_ENV
         else
           git branch --set-upstream-to=origin/subtree/library
-          git -c user.name=gitbot -c user.email=git@bot rebase --rebase-merges
           echo "MERGE_CONFLICTS=maybe" >> $GITHUB_ENV
         fi
 
