@@ -141,12 +141,15 @@ jobs:
       if: ${{ env.MERGE_CONFLICTS != 'noop' && env.MERGE_PR_EXISTS == 'no' }}
       run: |
         cd verify-rust-std
+        if ! git rev-parse --verify subtree/library; then
+          git checkout -t -b subtree/library origin/update-subtree/library
+        fi
         git checkout main
 
         # This command may fail, which will require human intervention.
         if ! git \
             -c user.name=gitbot -c user.email=git@bot \
-            subtree merge --prefix=library update-subtree/library --squash; then
+            subtree merge --prefix=library subtree/library --squash; then
           echo "MERGE_CONFLICTS=yes" >> $GITHUB_ENV
           git -c user.name=gitbot -c user.email=git@bot commit -a -m "Merge from $NEXT_COMMIT_HASH with conflicts"
         else
