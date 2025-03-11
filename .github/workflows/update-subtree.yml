@@ -11,7 +11,7 @@ defaults:
 
 jobs:
   update-subtree-library:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout Repository
@@ -33,12 +33,6 @@ jobs:
         repository: rust-lang/rust
         fetch-depth: 0
         path: rust-tmp
-
-    - name: Checkout git-filter-repo
-      uses: actions/checkout@v4
-      with:
-        repository: newren/git-filter-repo
-        path: git-filter-repo
 
     - name: Fetch toolchain versions
       run: |
@@ -77,6 +71,24 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
 
+    - name: Checkout splitsh-lite
+      if: ${{ env.SUBTREE_PR_EXISTS == 'no' }}
+      uses: actions/checkout@v4
+      with:
+        repository: splitsh/lite
+        path: splitsh-lite
+
+    - name: Build splitsh-lite
+      if: ${{ env.SUBTREE_PR_EXISTS == 'no' }}
+      run: |
+        cd splitsh-lite
+        sudo apt-get install -y libgit2-dev
+        sed -i 's#github.com/libgit2/git2go#github.com/jeffwelling/git2go#' go.mod splitter/*
+        sed -i -e 's/v34/v37/g' go.mod splitter/*.go
+        sed -i 's/v37.0.0/v37.0.4/' go.mod
+        go mod tidy
+        go build -o splitsh-lite github.com/splitsh/lite
+
     - name: Update subtree/library locally
       if: ${{ env.SUBTREE_PR_EXISTS == 'no' }}
       run: |
@@ -89,16 +101,13 @@ jobs:
         fi
 
         git checkout ${NEXT_COMMIT_HASH}
-        ../git-filter-repo/git-filter-repo --subdirectory-filter library --force
-        git checkout -b subtree/library
+        /usr/bin/time -v ../splitsh-lite/splitsh-lite --progress --prefix=library --target subtree/library
+        git checkout -b subtree/library subtree/library
 
         cd ../verify-rust-std
         git remote add rust-filtered ../rust-tmp/
         git fetch rust-filtered
         git checkout -b subtree/library rust-filtered/subtree/library
-        # The filter-subtree operation adds an extraneous `library/` folder containing the submodules
-        # (c.f. https://github.com/model-checking/verify-rust-std/issues/249), so remove that before committing.
-        rm -rf library
         SUBTREE_HEAD_MSG=$(git log --format=%s -n 1 origin/subtree/library)
         UPSTREAM_FROM=$(git log --grep="${SUBTREE_HEAD_MSG}" -n 1 --format=%H rust-filtered/subtree/library)
         UPSTREAM_HEAD=$(git log --format=%H -n 1 rust-filtered/subtree/library)
@@ -107,7 +116,7 @@ jobs:
           echo "MERGE_CONFLICTS=noop" >> $GITHUB_ENV
         else
           git branch --set-upstream-to=origin/subtree/library
-          git -c user.name=gitbot -c user.email=git@bot rebase
+          git -c user.name=gitbot -c user.email=git@bot rebase --rebase-merges
           echo "MERGE_CONFLICTS=maybe" >> $GITHUB_ENV
         fi
 
