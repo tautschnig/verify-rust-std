@@ -1,14 +1,15 @@
+use safety::requires;
+
 use super::{
     FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, TrustedStep,
 };
 use crate::ascii::Char as AsciiChar;
+#[cfg(kani)]
+use crate::kani;
 use crate::mem;
 use crate::net::{Ipv4Addr, Ipv6Addr};
 use crate::num::NonZero;
 use crate::ops::{self, Try};
-#[cfg(kani)]
-use crate::kani;
-use safety::requires;
 
 // Safety: All invariants are upheld.
 macro_rules! unsafe_impl_trusted_step {
