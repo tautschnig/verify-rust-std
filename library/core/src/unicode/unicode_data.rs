@@ -51,10 +51,10 @@ const fn bitset_search<
 struct ShortOffsetRunHeader(u32);
 
 impl ShortOffsetRunHeader {
-    const fn new(start_index: usize, prefix_sum: u32) -> Self {
-        assert!(start_index < (1 << 11));
-        assert!(prefix_sum < (1 << 21));
-
+    #[cfg_attr(not(bootstrap), rustc_const_unstable(feature = "contracts", issue = "128044"))]
+    #[cfg_attr(not(bootstrap),
+        core::contracts::requires(start_index < (1 << 11) && prefix_sum < (1 << 21)))]
+    const unsafe fn new(start_index: usize, prefix_sum: u32) -> Self {
         Self((start_index as u32) << 21 | prefix_sum)
     }
 
@@ -136,33 +136,112 @@ pub mod alphabetic {
     use super::ShortOffsetRunHeader;
 
     static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 53] = [
-        ShortOffsetRunHeader::new(0, 706), ShortOffsetRunHeader::new(16, 4681),
-        ShortOffsetRunHeader::new(418, 5741), ShortOffsetRunHeader::new(456, 7958),
-        ShortOffsetRunHeader::new(556, 9398), ShortOffsetRunHeader::new(627, 11264),
-        ShortOffsetRunHeader::new(629, 12293), ShortOffsetRunHeader::new(667, 13312),
-        ShortOffsetRunHeader::new(691, 19904), ShortOffsetRunHeader::new(692, 42125),
-        ShortOffsetRunHeader::new(694, 42509), ShortOffsetRunHeader::new(698, 55204),
-        ShortOffsetRunHeader::new(788, 63744), ShortOffsetRunHeader::new(793, 64110),
-        ShortOffsetRunHeader::new(794, 64830), ShortOffsetRunHeader::new(816, 66176),
-        ShortOffsetRunHeader::new(857, 67383), ShortOffsetRunHeader::new(904, 73440),
-        ShortOffsetRunHeader::new(1221, 74650), ShortOffsetRunHeader::new(1232, 77712),
-        ShortOffsetRunHeader::new(1237, 78896), ShortOffsetRunHeader::new(1240, 82939),
-        ShortOffsetRunHeader::new(1244, 83527), ShortOffsetRunHeader::new(1246, 90368),
-        ShortOffsetRunHeader::new(1247, 92160), ShortOffsetRunHeader::new(1249, 92729),
-        ShortOffsetRunHeader::new(1250, 93504), ShortOffsetRunHeader::new(1265, 100344),
-        ShortOffsetRunHeader::new(1282, 101590), ShortOffsetRunHeader::new(1284, 110576),
-        ShortOffsetRunHeader::new(1287, 110883), ShortOffsetRunHeader::new(1294, 111356),
-        ShortOffsetRunHeader::new(1304, 113664), ShortOffsetRunHeader::new(1305, 119808),
-        ShortOffsetRunHeader::new(1315, 120486), ShortOffsetRunHeader::new(1352, 122624),
-        ShortOffsetRunHeader::new(1375, 123536), ShortOffsetRunHeader::new(1399, 124112),
-        ShortOffsetRunHeader::new(1403, 124896), ShortOffsetRunHeader::new(1409, 126464),
-        ShortOffsetRunHeader::new(1425, 127280), ShortOffsetRunHeader::new(1491, 131072),
-        ShortOffsetRunHeader::new(1497, 173792), ShortOffsetRunHeader::new(1498, 177978),
-        ShortOffsetRunHeader::new(1500, 183970), ShortOffsetRunHeader::new(1504, 191457),
-        ShortOffsetRunHeader::new(1506, 192094), ShortOffsetRunHeader::new(1508, 194560),
-        ShortOffsetRunHeader::new(1509, 195102), ShortOffsetRunHeader::new(1510, 196608),
-        ShortOffsetRunHeader::new(1511, 201547), ShortOffsetRunHeader::new(1512, 205744),
-        ShortOffsetRunHeader::new(1514, 1319856),
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(0, 706) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(16, 4681) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(418, 5741) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(456, 7958) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(556, 9398) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(627, 11264) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(629, 12293) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(667, 13312) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(691, 19904) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(692, 42125) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(694, 42509) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(698, 55204) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(788, 63744) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(793, 64110) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(794, 64830) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(816, 66176) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(857, 67383) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(904, 73440) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1221, 74650) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1232, 77712) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1237, 78896) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1240, 82939) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1244, 83527) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1246, 90368) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1247, 92160) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1249, 92729) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1250, 93504) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1265, 100344) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1282, 101590) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1284, 110576) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1287, 110883) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1294, 111356) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1304, 113664) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1305, 119808) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1315, 120486) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1352, 122624) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1375, 123536) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1399, 124112) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1403, 124896) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1409, 126464) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1425, 127280) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1491, 131072) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1497, 173792) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1498, 177978) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1500, 183970) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1504, 191457) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1506, 192094) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1508, 194560) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1509, 195102) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1510, 196608) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1511, 201547) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1512, 205744) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1514, 1319856) },
     ];
     static OFFSETS: [u8; 1515] = [
         65, 26, 6, 26, 47, 1, 10, 1, 4, 1, 5, 23, 1, 31, 1, 0, 4, 12, 14, 5, 7, 1, 1, 1, 86, 1, 29,
@@ -242,25 +321,80 @@ pub mod case_ignorable {
     use super::ShortOffsetRunHeader;
 
     static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 37] = [
-        ShortOffsetRunHeader::new(0, 688), ShortOffsetRunHeader::new(21, 4957),
-        ShortOffsetRunHeader::new(273, 5906), ShortOffsetRunHeader::new(275, 8125),
-        ShortOffsetRunHeader::new(385, 11388), ShortOffsetRunHeader::new(419, 12293),
-        ShortOffsetRunHeader::new(431, 40981), ShortOffsetRunHeader::new(443, 42232),
-        ShortOffsetRunHeader::new(445, 42508), ShortOffsetRunHeader::new(447, 64286),
-        ShortOffsetRunHeader::new(543, 65024), ShortOffsetRunHeader::new(547, 66045),
-        ShortOffsetRunHeader::new(577, 67456), ShortOffsetRunHeader::new(583, 68097),
-        ShortOffsetRunHeader::new(589, 68900), ShortOffsetRunHeader::new(601, 69291),
-        ShortOffsetRunHeader::new(609, 71727), ShortOffsetRunHeader::new(733, 71995),
-        ShortOffsetRunHeader::new(737, 72752), ShortOffsetRunHeader::new(765, 73459),
-        ShortOffsetRunHeader::new(795, 78896), ShortOffsetRunHeader::new(807, 90398),
-        ShortOffsetRunHeader::new(811, 92912), ShortOffsetRunHeader::new(815, 93504),
-        ShortOffsetRunHeader::new(821, 94031), ShortOffsetRunHeader::new(825, 110576),
-        ShortOffsetRunHeader::new(833, 113821), ShortOffsetRunHeader::new(839, 118528),
-        ShortOffsetRunHeader::new(843, 119143), ShortOffsetRunHeader::new(847, 121344),
-        ShortOffsetRunHeader::new(857, 122880), ShortOffsetRunHeader::new(869, 123566),
-        ShortOffsetRunHeader::new(885, 124139), ShortOffsetRunHeader::new(889, 125136),
-        ShortOffsetRunHeader::new(893, 127995), ShortOffsetRunHeader::new(897, 917505),
-        ShortOffsetRunHeader::new(899, 2032112),
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(0, 688) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(21, 4957) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(273, 5906) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(275, 8125) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(385, 11388) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(419, 12293) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(431, 40981) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(443, 42232) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(445, 42508) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(447, 64286) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(543, 65024) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(547, 66045) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(577, 67456) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(583, 68097) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(589, 68900) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(601, 69291) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(609, 71727) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(733, 71995) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(737, 72752) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(765, 73459) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(795, 78896) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(807, 90398) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(811, 92912) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(815, 93504) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(821, 94031) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(825, 110576) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(833, 113821) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(839, 118528) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(843, 119143) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(847, 121344) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(857, 122880) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(869, 123566) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(885, 124139) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(889, 125136) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(893, 127995) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(897, 917505) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(899, 2032112) },
     ];
     static OFFSETS: [u8; 905] = [
         39, 1, 6, 1, 11, 1, 35, 1, 1, 1, 71, 1, 4, 1, 1, 1, 4, 1, 2, 2, 0, 192, 4, 2, 4, 1, 9, 2,
@@ -317,17 +451,50 @@ pub mod cased {
     use super::ShortOffsetRunHeader;
 
     static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 22] = [
-        ShortOffsetRunHeader::new(0, 4256), ShortOffsetRunHeader::new(55, 5024),
-        ShortOffsetRunHeader::new(65, 7296), ShortOffsetRunHeader::new(69, 7958),
-        ShortOffsetRunHeader::new(78, 9398), ShortOffsetRunHeader::new(153, 11264),
-        ShortOffsetRunHeader::new(155, 42560), ShortOffsetRunHeader::new(167, 43824),
-        ShortOffsetRunHeader::new(187, 64256), ShortOffsetRunHeader::new(193, 65313),
-        ShortOffsetRunHeader::new(197, 66560), ShortOffsetRunHeader::new(201, 67456),
-        ShortOffsetRunHeader::new(223, 68736), ShortOffsetRunHeader::new(231, 71840),
-        ShortOffsetRunHeader::new(239, 93760), ShortOffsetRunHeader::new(241, 119808),
-        ShortOffsetRunHeader::new(243, 120486), ShortOffsetRunHeader::new(280, 122624),
-        ShortOffsetRunHeader::new(303, 122928), ShortOffsetRunHeader::new(309, 125184),
-        ShortOffsetRunHeader::new(311, 127280), ShortOffsetRunHeader::new(313, 1241482),
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(0, 4256) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(55, 5024) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(65, 7296) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(69, 7958) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(78, 9398) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(153, 11264) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(155, 42560) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(167, 43824) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(187, 64256) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(193, 65313) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(197, 66560) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(201, 67456) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(223, 68736) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(231, 71840) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(239, 93760) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(241, 119808) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(243, 120486) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(280, 122624) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(303, 122928) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(309, 125184) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(311, 127280) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(313, 1241482) },
     ];
     static OFFSETS: [u8; 319] = [
         65, 26, 6, 26, 47, 1, 10, 1, 4, 1, 5, 23, 1, 31, 1, 195, 1, 4, 4, 208, 1, 36, 7, 2, 30, 5,
@@ -363,7 +530,8 @@ pub mod cc {
     use super::ShortOffsetRunHeader;
 
     static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 1] = [
-        ShortOffsetRunHeader::new(0, 1114272),
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(0, 1114272) },
     ];
     static OFFSETS: [u8; 5] = [
         0, 32, 95, 33, 0,
@@ -388,23 +556,74 @@ pub mod grapheme_extend {
     use super::ShortOffsetRunHeader;
 
     static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 34] = [
-        ShortOffsetRunHeader::new(0, 768), ShortOffsetRunHeader::new(1, 1155),
-        ShortOffsetRunHeader::new(3, 1425), ShortOffsetRunHeader::new(5, 4957),
-        ShortOffsetRunHeader::new(249, 5906), ShortOffsetRunHeader::new(251, 8204),
-        ShortOffsetRunHeader::new(345, 11503), ShortOffsetRunHeader::new(349, 12330),
-        ShortOffsetRunHeader::new(355, 42607), ShortOffsetRunHeader::new(359, 43010),
-        ShortOffsetRunHeader::new(367, 64286), ShortOffsetRunHeader::new(433, 65024),
-        ShortOffsetRunHeader::new(435, 65438), ShortOffsetRunHeader::new(439, 66045),
-        ShortOffsetRunHeader::new(441, 68097), ShortOffsetRunHeader::new(447, 68900),
-        ShortOffsetRunHeader::new(459, 69291), ShortOffsetRunHeader::new(463, 71727),
-        ShortOffsetRunHeader::new(599, 72752), ShortOffsetRunHeader::new(631, 73459),
-        ShortOffsetRunHeader::new(661, 78912), ShortOffsetRunHeader::new(671, 90398),
-        ShortOffsetRunHeader::new(675, 92912), ShortOffsetRunHeader::new(679, 94031),
-        ShortOffsetRunHeader::new(683, 113821), ShortOffsetRunHeader::new(691, 118528),
-        ShortOffsetRunHeader::new(693, 119141), ShortOffsetRunHeader::new(697, 121344),
-        ShortOffsetRunHeader::new(709, 122880), ShortOffsetRunHeader::new(721, 123566),
-        ShortOffsetRunHeader::new(735, 124140), ShortOffsetRunHeader::new(739, 125136),
-        ShortOffsetRunHeader::new(743, 917536), ShortOffsetRunHeader::new(747, 2032112),
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(0, 768) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(1, 1155) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(3, 1425) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(5, 4957) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(249, 5906) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(251, 8204) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(345, 11503) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(349, 12330) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(355, 42607) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(359, 43010) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(367, 64286) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(433, 65024) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(435, 65438) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(439, 66045) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(441, 68097) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(447, 68900) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(459, 69291) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(463, 71727) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(599, 72752) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(631, 73459) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(661, 78912) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(671, 90398) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(675, 92912) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(679, 94031) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(683, 113821) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(691, 118528) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(693, 119141) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(697, 121344) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(709, 122880) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(721, 123566) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(735, 124140) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(739, 125136) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(743, 917536) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(747, 2032112) },
     ];
     static OFFSETS: [u8; 751] = [
         0, 112, 0, 7, 0, 45, 1, 1, 1, 2, 1, 2, 1, 1, 72, 11, 48, 21, 16, 1, 101, 7, 2, 6, 2, 2, 1,
@@ -567,27 +786,90 @@ pub mod n {
     use super::ShortOffsetRunHeader;
 
     static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 42] = [
-        ShortOffsetRunHeader::new(0, 1632), ShortOffsetRunHeader::new(9, 2406),
-        ShortOffsetRunHeader::new(15, 4160), ShortOffsetRunHeader::new(49, 4969),
-        ShortOffsetRunHeader::new(53, 5870), ShortOffsetRunHeader::new(55, 6470),
-        ShortOffsetRunHeader::new(63, 8304), ShortOffsetRunHeader::new(79, 9312),
-        ShortOffsetRunHeader::new(89, 10102), ShortOffsetRunHeader::new(93, 11517),
-        ShortOffsetRunHeader::new(95, 12295), ShortOffsetRunHeader::new(97, 12690),
-        ShortOffsetRunHeader::new(103, 42528), ShortOffsetRunHeader::new(115, 43056),
-        ShortOffsetRunHeader::new(119, 44016), ShortOffsetRunHeader::new(131, 65296),
-        ShortOffsetRunHeader::new(133, 65799), ShortOffsetRunHeader::new(135, 66273),
-        ShortOffsetRunHeader::new(141, 67672), ShortOffsetRunHeader::new(153, 68858),
-        ShortOffsetRunHeader::new(183, 69216), ShortOffsetRunHeader::new(189, 70736),
-        ShortOffsetRunHeader::new(209, 71248), ShortOffsetRunHeader::new(213, 71904),
-        ShortOffsetRunHeader::new(221, 72688), ShortOffsetRunHeader::new(225, 73552),
-        ShortOffsetRunHeader::new(233, 74752), ShortOffsetRunHeader::new(237, 90416),
-        ShortOffsetRunHeader::new(239, 92768), ShortOffsetRunHeader::new(241, 93552),
-        ShortOffsetRunHeader::new(249, 93824), ShortOffsetRunHeader::new(251, 118000),
-        ShortOffsetRunHeader::new(253, 119488), ShortOffsetRunHeader::new(255, 120782),
-        ShortOffsetRunHeader::new(261, 123200), ShortOffsetRunHeader::new(263, 123632),
-        ShortOffsetRunHeader::new(265, 124144), ShortOffsetRunHeader::new(267, 125127),
-        ShortOffsetRunHeader::new(271, 126065), ShortOffsetRunHeader::new(275, 127232),
-        ShortOffsetRunHeader::new(285, 130032), ShortOffsetRunHeader::new(287, 1244154),
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(0, 1632) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(9, 2406) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(15, 4160) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(49, 4969) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(53, 5870) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(55, 6470) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(63, 8304) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(79, 9312) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(89, 10102) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(93, 11517) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(95, 12295) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(97, 12690) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(103, 42528) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(115, 43056) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(119, 44016) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(131, 65296) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(133, 65799) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(135, 66273) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(141, 67672) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(153, 68858) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(183, 69216) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(189, 70736) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(209, 71248) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(213, 71904) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(221, 72688) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(225, 73552) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(233, 74752) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(237, 90416) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(239, 92768) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(241, 93552) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(249, 93824) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(251, 118000) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(253, 119488) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(255, 120782) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(261, 123200) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(263, 123632) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(265, 124144) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(267, 125127) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(271, 126065) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(275, 127232) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(285, 130032) },
+        // SAFETY: The values are in the ranges supported by ShortOffsetRunHeader
+        unsafe { ShortOffsetRunHeader::new(287, 1244154) },
     ];
     static OFFSETS: [u8; 289] = [
         48, 10, 120, 2, 5, 1, 2, 3, 0, 10, 134, 10, 198, 10, 0, 10, 118, 10, 4, 6, 108, 10, 118,
