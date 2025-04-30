@@ -212,7 +212,7 @@ macro_rules! step_unsigned_methods {
             unsafe { start.unchecked_add(n as Self) }
         }
 
-        #[requires(start.checked_sub(n as Self).is_some())]
+        #[requires(start >= n)]
         #[inline]
         unsafe fn backward_unchecked(start: Self, n: usize) -> Self {
             // SAFETY: the caller has to guarantee that `start - n` doesn't overflow.
@@ -503,6 +503,12 @@ impl Step for char {
     }
 
     #[requires((start as u32).checked_add(count as u32).is_some())]
+    #[requires({
+        let dist = (start as u32).checked_add(count as u32);
+        dist.is_some() &&
+            (start >= 0xD800 || dist.unwrap() < 0xD800 ||
+             dist.unwrap().checked_add(0x800).is_some())
+    })]
     #[inline]
     unsafe fn forward_unchecked(start: char, count: usize) -> char {
         let start = start as u32;
@@ -519,7 +525,12 @@ impl Step for char {
         unsafe { char::from_u32_unchecked(res) }
     }
 
-    #[requires((start as u32).checked_sub(count as u32).is_some())]
+    #[requires({
+        let dist = (start as u32).checked_sub(count as u32);
+        dist.is_some() &&
+            (start < 0xE000 || dist.unwrap() >= 0xE000 ||
+             dist.unwrap().checked_sub(0x800).is_some())
+    })]
     #[inline]
     unsafe fn backward_unchecked(start: char, count: usize) -> char {
         let start = start as u32;
