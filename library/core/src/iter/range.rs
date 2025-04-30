@@ -502,6 +502,7 @@ impl Step for char {
         Some(unsafe { char::from_u32_unchecked(res) })
     }
 
+    #[requires((start as u32).checked_add(count as u32).is_some())]
     #[inline]
     unsafe fn forward_unchecked(start: char, count: usize) -> char {
         let start = start as u32;
@@ -518,6 +519,7 @@ impl Step for char {
         unsafe { char::from_u32_unchecked(res) }
     }
 
+    #[requires((start as u32).checked_sub(count as u32).is_some())]
     #[inline]
     unsafe fn backward_unchecked(start: char, count: usize) -> char {
         let start = start as u32;
@@ -556,6 +558,7 @@ impl Step for AsciiChar {
         Some(unsafe { AsciiChar::from_u8_unchecked(end) })
     }
 
+    #[requires((start.to_u8() as u32).checked_add(count as u32).is_some())]
     #[inline]
     unsafe fn forward_unchecked(start: AsciiChar, count: usize) -> AsciiChar {
         // SAFETY: Caller asserts that result is a valid ASCII character,
@@ -566,6 +569,7 @@ impl Step for AsciiChar {
         unsafe { AsciiChar::from_u8_unchecked(end) }
     }
 
+    #[requires((start.to_u8() as u32).checked_sub(count as u32).is_some())]
     #[inline]
     unsafe fn backward_unchecked(start: AsciiChar, count: usize) -> AsciiChar {
         // SAFETY: Caller asserts that result is a valid ASCII character,
@@ -594,6 +598,7 @@ impl Step for Ipv4Addr {
         u32::backward_checked(start.to_bits(), count).map(Ipv4Addr::from_bits)
     }
 
+    #[requires(start.to_bits().checked_add(count as u32).is_some())]
     #[inline]
     unsafe fn forward_unchecked(start: Ipv4Addr, count: usize) -> Ipv4Addr {
         // SAFETY: Since u32 and Ipv4Addr are losslessly convertible,
@@ -601,6 +606,7 @@ impl Step for Ipv4Addr {
         Ipv4Addr::from_bits(unsafe { u32::forward_unchecked(start.to_bits(), count) })
     }
 
+    #[requires(start.to_bits().checked_sub(count as u32).is_some())]
     #[inline]
     unsafe fn backward_unchecked(start: Ipv4Addr, count: usize) -> Ipv4Addr {
         // SAFETY: Since u32 and Ipv4Addr are losslessly convertible,
