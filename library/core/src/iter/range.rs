@@ -526,10 +526,11 @@ impl Step for char {
     }
 
     #[requires({
-        let dist = (start as u32).checked_sub(count as u32);
-        dist.is_some() &&
-            ((start as u32) < 0xE000 || dist.unwrap() >= 0xE000 ||
-             dist.unwrap().checked_sub(0x800).is_some())
+        (start as u32).checked_sub(count as u32).is_some_and(|dist|
+            (start as u32) < 0xE000 ||
+            dist >= 0xE000 ||
+            dist.checked_sub(0x800).is_some()
+         )
     })]
     #[inline]
     unsafe fn backward_unchecked(start: char, count: usize) -> char {
