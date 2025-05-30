@@ -570,7 +570,7 @@ impl Step for AsciiChar {
         Some(unsafe { AsciiChar::from_u8_unchecked(end) })
     }
 
-    #[requires((start.to_u8() as u32).checked_add(count as u32).is_some())]
+    #[requires(count < 256 && start.to_u8().checked_add(count as u8).is_some())]
     #[inline]
     unsafe fn forward_unchecked(start: AsciiChar, count: usize) -> AsciiChar {
         // SAFETY: Caller asserts that result is a valid ASCII character,
@@ -581,7 +581,7 @@ impl Step for AsciiChar {
         unsafe { AsciiChar::from_u8_unchecked(end) }
     }
 
-    #[requires((start.to_u8() as u32).checked_sub(count as u32).is_some())]
+    #[requires(count < 256 && start.to_u8().checked_sub(count as u8).is_some())]
     #[inline]
     unsafe fn backward_unchecked(start: AsciiChar, count: usize) -> AsciiChar {
         // SAFETY: Caller asserts that result is a valid ASCII character,
