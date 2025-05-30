@@ -504,7 +504,7 @@ impl Step for char {
 
     #[requires({
         (start as u32).checked_add(count as u32).is_some_and(|dist|
-            (start as u32) >= 0xD800 || 
+            (start as u32) >= 0xD800 ||
             dist < 0xD800 ||
             dist.checked_add(0x800).is_some()
          )
