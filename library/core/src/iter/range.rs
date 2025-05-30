@@ -502,7 +502,6 @@ impl Step for char {
         Some(unsafe { char::from_u32_unchecked(res) })
     }
 
-    #[requires((start as u32).checked_add(count as u32).is_some())]
     #[requires({
         let dist = (start as u32).checked_add(count as u32);
         dist.is_some() &&
