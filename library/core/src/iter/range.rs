@@ -503,10 +503,11 @@ impl Step for char {
     }
 
     #[requires({
-        let dist = (start as u32).checked_add(count as u32);
-        dist.is_some() &&
-            ((start as u32) >= 0xD800 || dist.unwrap() < 0xD800 ||
-             dist.unwrap().checked_add(0x800).is_some())
+        (start as u32).checked_add(count as u32).is_some_and(|dist|
+            (start as u32) >= 0xD800 || 
+            dist < 0xD800 ||
+            dist.checked_add(0x800).is_some()
+         )
     })]
     #[inline]
     unsafe fn forward_unchecked(start: char, count: usize) -> char {
