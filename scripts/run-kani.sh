@@ -218,7 +218,7 @@ run_verification_subset() {
         -j \
         --output-format=terse \
         "${command_args[@]}" \
-        --enable-unstable \
+        -Z unstable-options \
         --cbmc-args --object-bits 12
 }
 
@@ -300,7 +300,7 @@ main() {
                 $unstable_args \
                 --no-assert-contracts \
                 "${command_args[@]}" \
-                --enable-unstable \
+                -Z unstable-options \
                 --cbmc-args --object-bits 12
         fi
       elif [[ "$run_command" == "autoharness" ]]; then
@@ -311,7 +311,7 @@ main() {
               $unstable_args \
               --no-assert-contracts \
               "${command_args[@]}" \
-              --enable-unstable \
+              -Z unstable-options \
               --cbmc-args --object-bits 12
     elif [[ "$run_command" == "list" ]]; then
         echo "Running Kani list command..."
@@ -347,7 +347,7 @@ main() {
             $unstable_args \
             --no-assert-contracts \
             "${command_args[@]}" \
-            --enable-unstable \
+            -Z unstable-options \
             --cbmc-args --object-bits 12
         # remove metadata file for Kani-generated "dummy" crate that we won't
         # get scanner data for
