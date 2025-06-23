@@ -111,8 +111,10 @@ jobs:
         fi
 
         git checkout ${NEXT_COMMIT_HASH}
-        git submodule update --init -- library/
-        git submodule status  -- library/ > ../submodule-heads
+        # Collect submodule commits; note that submodules (intentionally!)
+        # aren't initialized, hence lines will be prefixed with "-" (see git
+        # submodule --help).
+        git submodule status  -- library/ | sed 's/^-//' > ../submodule-heads
         /usr/bin/time -v ../splitsh-lite/splitsh-lite --progress --prefix=library --target subtree/library
         git checkout -b subtree/library subtree/library
 
@@ -191,7 +193,7 @@ jobs:
         echo "NEW_SUBTREE_HEAD=${NEW_SUBTREE_HEAD}" >> $GITHUB_ENV
 
         git submodule foreach 'git fetch'
-        git submodule foreach 'git fetch; grep $sm_path $toplevel/../submodule-heads | cut -f2 -d" " | xargs git checkout'
+        git submodule foreach 'git fetch; grep $sm_path $toplevel/../submodule-heads | cut -f1 -d" " | xargs git checkout'
         git -c user.name=gitbot -c user.email=git@bot \
           commit -m "Update submodules" library/
 
