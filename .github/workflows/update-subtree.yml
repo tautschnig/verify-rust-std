@@ -171,6 +171,7 @@ jobs:
           fi
         fi
         git checkout main
+        git submodule foreach 'git fetch'
 
         # Tell git about the correct merge base to use, which is the subtree
         # head that we last merged from.
@@ -184,19 +185,18 @@ jobs:
             -c user.name=gitbot -c user.email=git@bot \
             merge -Xsubtree=library subtree/library; then
           echo "MERGE_CONFLICTS=yes" >> $GITHUB_ENV
+          git submodule foreach 'grep $sm_path $toplevel/../submodule-heads | cut -f1 -d" " | xargs git checkout'
           git -c user.name=gitbot -c user.email=git@bot commit -a -m "Merge from $NEXT_COMMIT_HASH with conflicts"
         else
           echo "MERGE_CONFLICTS=no" >> $GITHUB_ENV
+          git submodule foreach 'grep $sm_path $toplevel/../submodule-heads | cut -f1 -d" " | xargs git checkout'
+          git -c user.name=gitbot -c user.email=git@bot \
+            commit -m "Update submodules" library/
         fi
         git replace -d subtree/library
         git replace -d main~1
         NEW_SUBTREE_HEAD=$(git rev-parse subtree/library)
         echo "NEW_SUBTREE_HEAD=${NEW_SUBTREE_HEAD}" >> $GITHUB_ENV
-
-        git submodule foreach 'git fetch'
-        git submodule foreach 'git fetch; grep $sm_path $toplevel/../submodule-heads | cut -f1 -d" " | xargs git checkout'
-        git -c user.name=gitbot -c user.email=git@bot \
-          commit -m "Update submodules" library/
 
         sed -i "s/^channel = \"nightly-.*\"/channel = \"nightly-${NEXT_TOOLCHAIN_DATE}\"/" rust-toolchain.toml
         git -c user.name=gitbot -c user.email=git@bot \
