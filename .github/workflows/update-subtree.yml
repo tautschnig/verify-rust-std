@@ -158,6 +158,7 @@ jobs:
     - name: Merge subtree/library changes
       if: ${{ env.CURRENT_TOOLCHAIN_DATE != env.NEXT_TOOLCHAIN_DATE && env.MERGE_PR_EXISTS == 'no' }}
       run: |
+        set -vx
         cd verify-rust-std
         # create-pull-request resets branches locally, implying that
         # `subtree/library` no longer is what the above instructions created.
