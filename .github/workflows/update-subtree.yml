@@ -185,18 +185,22 @@ jobs:
             merge -Xsubtree=library subtree/library; then
           echo "MERGE_CONFLICTS=yes" >> $GITHUB_ENV
           for d in $(cat ../submodule-heads | cut -f2 -d" ") ; do git reset HEAD $d ; done
-          git submodule foreach 'grep $sm_path $toplevel/../submodule-heads | cut -f1 -d" " | xargs git checkout'
           git -c user.name=gitbot -c user.email=git@bot commit -a -m "Merge from $NEXT_COMMIT_HASH with conflicts"
         else
           echo "MERGE_CONFLICTS=no" >> $GITHUB_ENV
-          git submodule foreach 'grep $sm_path $toplevel/../submodule-heads | cut -f1 -d" " | xargs git checkout'
-          git -c user.name=gitbot -c user.email=git@bot \
-            commit -m "Update submodules" library/
         fi
         git replace -d subtree/library
         git replace -d main~1
         NEW_SUBTREE_HEAD=$(git rev-parse subtree/library)
         echo "NEW_SUBTREE_HEAD=${NEW_SUBTREE_HEAD}" >> $GITHUB_ENV
+
+        set -vx
+        cat ../submodule-heads
+        git submodule status
+        git submodule foreach 'grep $sm_path $toplevel/../submodule-heads | cut -f1 -d" " | xargs git checkout'
+        git submodule status
+        git -c user.name=gitbot -c user.email=git@bot \
+          commit -m "Update submodules" library/
 
         sed -i "s/^channel = \"nightly-.*\"/channel = \"nightly-${NEXT_TOOLCHAIN_DATE}\"/" rust-toolchain.toml
         git -c user.name=gitbot -c user.email=git@bot \
