@@ -197,6 +197,8 @@ jobs:
         set -vx
         cat ../submodule-heads
         git submodule status
+        git submodule update --init
+        git submodule status
         git submodule foreach 'grep $sm_path $toplevel/../submodule-heads | cut -f1 -d" " | xargs git checkout'
         git submodule status
         git -c user.name=gitbot -c user.email=git@bot \
