@@ -185,6 +185,7 @@ jobs:
             -c user.name=gitbot -c user.email=git@bot \
             merge -Xsubtree=library subtree/library; then
           echo "MERGE_CONFLICTS=yes" >> $GITHUB_ENV
+          git submodule update --init
           git submodule foreach 'grep $sm_path $toplevel/../submodule-heads | cut -f1 -d" " | xargs git checkout'
           git -c user.name=gitbot -c user.email=git@bot commit -a -m "Merge from $NEXT_COMMIT_HASH with conflicts"
         else
