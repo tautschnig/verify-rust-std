@@ -1590,9 +1590,14 @@ impl<T> NonNull<[T]> {
     #[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
     #[must_use]
     #[inline]
+    // `result.len()` reads the length from the wide-pointer metadata without
+    // creating a reference: `slice_from_raw_parts` is a safe function with no
+    // validity requirements on `data`, so the postcondition must not
+    // dereference the resulting pointer (`unsafe { result.as_ref() }.len()`,
+    // as used previously, is UB for dangling or misaligned `data`).
     #[ensures(|result| !result.pointer.is_null()
         && result.pointer as *const T == data.pointer
-        && unsafe { result.as_ref() }.len() == len)]
+        && result.len() == len)]
     pub const fn slice_from_raw_parts(data: NonNull<T>, len: usize) -> Self {
         // SAFETY: `data` is a `NonNull` pointer which is necessarily non-null
         unsafe { Self::new_unchecked(super::slice_from_raw_parts_mut(data.as_ptr(), len)) }
