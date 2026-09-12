@@ -468,7 +468,8 @@ impl<T: PointeeSized> NonNull<T> {
     #[rustc_const_stable(feature = "const_nonnull_as_ref", since = "1.73.0")]
     #[must_use]
     #[inline(always)]
-    #[requires(ub_checks::can_dereference(self.as_ptr() as *const()))] // Ensure input is convertible to a reference
+    #[requires(ub_checks::can_dereference(self.as_ptr() as *const()))]
+    // Ensure input is convertible to a reference
     // addr_eq (rather than ptr::eq) so the clause is well-defined for
     // wide pointers too: comparing *const dyn with == also compares vtable
     // pointers, whose identity is unspecified (Kani: "unstable vtable
