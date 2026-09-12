@@ -1,9 +1,9 @@
 // Original implementation taken from rust-memchr.
 // Copyright 2015 Andrew Gallant, bluss and Nicolas Koch
 
+use crate::intrinsics::const_eval_select;
 #[cfg(kani)]
 use crate::kani;
-use crate::intrinsics::const_eval_select;
 
 const LO_USIZE: usize = usize::repeat_u8(0x01);
 const HI_USIZE: usize = usize::repeat_u8(0x80);
